@@ -67,9 +67,9 @@ while cont == 1:
                 for i in range(nmeter):
                     meterkey = str(meterarr[meterarrnum])
                     # print(dbID)
-                    url = 'https://portal.site-controls.net/device-service/rest/v1/clients/' + clientID + '/sites/' + dbID \
-                          + '/emeterdata/DEMAND' + meterkey + '.csv?start=' + start_date + '&finish=' + stop_date + \
-                          '&filename=' + meterkey + '.csv '
+                    url = 'https://portal.site-controls.net/device-service/rest/v1/clients/' + clientID + '/sites/' + \
+                          dbID + '/emeterdata/DEMAND' + meterkey + '.csv?start=' + start_date + '&finish=' + stop_date \
+                          + '&filename=' + meterkey + '.csv '
 
                     payload = {}
                     headers = {
@@ -83,11 +83,12 @@ while cont == 1:
                     # Save file
                     # file = clientID + '_' + dbID + '_DEMAND' + meterkey + '_' + start_date + '_' + stop_date + '.csv'
                     df = pd.read_csv(data)
+                    df.dropna(axis=0, how='any', thresh=None, subset=None, inplace=False)
                     for col in df.columns:
                         print(col)
-                    cols = array('i', [0, 1, 3, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14])
-                    df.drop(df.columns[cols], axis=1, inplace=True)
-                    df.dropna(axis=0, how='any', thresh=None, subset=None, inplace=False)
+                    # remove = input("Do you want to remove any columns?: (y/n)").lower()
+                    # cols = array('i', [0, 1, 3, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14])
+                    # df.drop(df.columns[cols], axis=1, inplace=True)
                     df.to_csv(clientID + '_' + dbID + '_DEMAND' + meterkey + '_' + start_date + '_' + stop_date + '.csv')
                     # file1 = clientID + '_' + dbID + '_DEMAND' + meterkey + '_' + start_date + '_' + stop_date
                     # save = input("The file will be saved as: " + file1 + " Do you want to modify this? (y/n)").lower()
@@ -100,7 +101,7 @@ while cont == 1:
                     #    writer = csv.writer(f)
                     #    for line in response.iter_lines():
                     #        writer.writerow(line.decode('utf-8').split(','))
-                    print(clientID + '_' + dbID + '_DEMAND' + meterkey + '_' + start_date + '_' + stop_date + '.csv' + \
+                    print(clientID + '_' + dbID + '_DEMAND' + meterkey + '_' + start_date + '_' + stop_date + '.csv' +
                           " saved to folder.")
                     meterarrnum = meterarrnum + 1
                 dbarrnum = dbarrnum + 1
@@ -126,15 +127,15 @@ while cont == 1:
         print('HVAC data pull request')
         clientID = input("Client ID: ")
         dbID = input("Site Database ID: ")
-        hvackey = input("HVAC key (HVAC1, HVAC2, HVAC3, etc): ")
+        hvackey = input("HVAC key. HVAC(1, 2, 3, etc): ")
 
         count = 1
         while count == 1:
             start_date = input("Start date (mm-dd-yyyy): ")
             stop_date = input("Stop date (mm-dd-yyyy): ")
             url = 'https://portal.site-controls.net/device-service/rest/v1/clients/' + clientID + '/sites/' + dbID + \
-                  '/hvacdata/' + hvackey + '.csv?start=' + start_date + '&finish=' + stop_date + '&filename=' + hvackey + \
-                  '.csv '
+                  '/hvacdata/HVAC' + hvackey + '.csv?start=' + start_date + '&finish=' + stop_date + '&filename=' + \
+                  hvackey + '.csv '
             payload = {}
             headers = {
                 'Cookie': "org.springframework.web.servlet.i18n.CookieLocaleResolver.LOCALE=en_US; PORTALAUTHCOOKIE=" +

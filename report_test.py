@@ -31,19 +31,26 @@ token = (json_data['data']['sessionToken'])
 clientID = input('ClientID:')
 
 # print(dbID)
-url = 'https://portal.site-controls.net/report-service/rest/v1/clients/' + clientID + '/runreport/98?outputformat=csv'
+url = 'https://portal.site-controls.net/report-service/rest/v1/clients/' + clientID + '/runreport/42?outputformat=csv'
 payload = {}
-files = {
-     {"type":"ReportInputField","label":"Clientdb","rank":1,"inputField":{"type":"InputField","name":"clientdb","value":"","inputType":"ClientDB"}},{"type":"ReportInputField","label":"Event Category","rank":2,"inputField":{"type":"InputField","name":"eventcat","value":"All","inputType":"PickOne"}},{"type":"ReportInputField","label":"All Clients","rank":3,"inputField":{"type":"InputField","name":"allclients","value":"false","inputType":"PickOne"}}
-}
+files = {}
+#     {"type":"ReportInputField","label":"Clientdb","rank":1,"inputField":{"type":"InputField","name":"clientdb","value":"","inputType":"ClientDB"}},{"type":"ReportInputField","label":"Event Category","rank":2,"inputField":{"type":"InputField","name":"eventcat","value":"All","inputType":"PickOne"}},{"type":"ReportInputField","label":"All Clients","rank":3,"inputField":{"type":"InputField","name":"allclients","value":"false","inputType":"PickOne"}}
+
 headers = {
     'Cookie': "org.springframework.web.servlet.i18n.CookieLocaleResolver.LOCALE=en_US; "
               "Content-Type: application/x-www-form-urlencoded"
               "PORTALAUTHCOOKIE=" + token
 }
 
-response = requests.request("GET", url, headers=headers, data=payload, files=files)
-print(response.text)
-data = StringIO(response.text)
-df = pd.read_csv(data)
-df.to_csv('Report98.csv')
+response = requests.request('GET', url=url, headers=headers, data=payload, files=files)
+file = 'Report42.csv'
+#print(response.text)
+#data = StringIO(response.text)
+#df = pd.read_csv(data)
+#df.to_csv('Report109.csv')
+# with open(file, 'w') as file:
+#     file.write('report49.csv')
+with open(file, "w") as f:
+    writer = csv.writer(f)
+    for line in response.iter_lines():
+        writer.writerow(line.decode('utf-8').split(','))
