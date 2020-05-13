@@ -1,10 +1,9 @@
 import requests
-import csv
 import getpass
 from datetime import datetime
-import os
 import time
 import pandas as pd
+from io import StringIO
 
 now = datetime.now()
 start_time = now.strftime("%H:%M:%S")
@@ -42,11 +41,13 @@ hhdstop = stopday
 hhyrstart2 = hhyrstart - 1
 hhyrstop2 = hhyrstop - 1
 
-dsdur = hhdstop - int(hhdstart)
+dsdur = int(hhdstop) - int(hhdstart)
 
 # Reports to run ONCE per KPI period
 
 # Vertical Market KPI
+print()
+print('Pulling Vertical Market KPI')
 url = "https://portal.site-controls.net/report-service/rest/v1/clients/56/runreport/114?outputformat=csv"
 
 payload = "inputs=%5B%7B%22type%22%3A%22ReportInputField%22%2C%22label%22%3A%22After%22%2C%22rank%22%3A1%2C" \
@@ -63,15 +64,7 @@ headers = {
 response = requests.request("POST", url, headers=headers, data=payload, auth=(usern, pword))
 print('Status Code:')
 print(response.status_code)
-file = 'Vertical Market.csv'
-with open(file, "w", newline='') as f:
-    writer = csv.writer(f)
-    for line in response.iter_lines():
-        writer.writerow(line.decode('utf-8').split(','))
-
-time.sleep(5)
-
-df = pd.read_csv(file)
+df = pd.read_csv(StringIO(response.text))
 df.columns = df.columns.str.strip().str.replace(' ', '_').str.replace('(', '').str.replace(')', '')
 df = df[df.Vertical_Market != 'Health Club']
 df = df[df.Vertical_Market != 'Restaurant']
@@ -82,26 +75,16 @@ df = df[df.Vertical_Market != 'Manufacturing']
 df = df[df.Vertical_Market != 'Demo']
 df.columns.str.replace('VerticalMarket', 'Vertical Market')
 df.columns = df.columns.str.strip().str.replace('_', ' ').str.replace('(', '').str.replace(')', '')
-df.to_excel('Vertical Market.xlsx', index=False, header=True)
-os.remove(file)
+df.to_excel('Vertical Market.xlsx', index=False, header=True, sheet_name='Vertical Market')
+print('Vertical Market.xlsx saved')
 
 # Active Site Count KPI
-
-url = "https://portal.site-controls.net/report-service/rest/v1/clients/56/runreport/6?outputformat=csv"
-
-payload = "inputs=%5B%7B%22type%22%3A%22ReportInputField%22%2C%22label%22%3A%22Date%22%2C%22rank%22%3A1%2C" \
-          "%22inputField%22%3A%7B%22type%22%3A%22InputField%22%2C%22name%22%3A%22day%22%2C%22value%22%3A%22" + \
-          str(stopyr) + '-' + str(stopday) + '-' + str(stopmth2) + "%22%2C%22inputType%22%3A%22Date%22%7D%7D%5D "
-headers = {
-    'Content-Type': 'application/x-www-form-urlencoded'
-}
-
-response = requests.request("POST", url, headers=headers, data=payload, auth=(usern, pword))
-print('Status Code:')
-print(response.status_code)
-if response.status_code == 504:
-    url = "https://portal.site-controls.net/report-service/rest/v1/clients/56/runreport/6?outputformat=csv&" \
-            "emailresult=" + usern
+cont = 0
+print()
+print('Pulling Active Site Count')
+time.sleep(5)
+while cont == 0:
+    url = "https://portal.site-controls.net/report-service/rest/v1/clients/56/runreport/6?outputformat=csv"
 
     payload = "inputs=%5B%7B%22type%22%3A%22ReportInputField%22%2C%22label%22%3A%22Date%22%2C%22rank%22%3A1%2C" \
               "%22inputField%22%3A%7B%22type%22%3A%22InputField%22%2C%22name%22%3A%22day%22%2C%22value%22%3A%22" + \
@@ -109,30 +92,53 @@ if response.status_code == 504:
     headers = {
         'Content-Type': 'application/x-www-form-urlencoded'
     }
-    print('Active Site Count will be emailed to: ' + usern)
-else:
-    file = 'Active Site Count.csv'
-    print('Saving ' + file + '.')
-    with open(file, "w", newline='') as f:
-        writer = csv.writer(f)
-        for line in response.iter_lines():
-            writer.writerow(line.decode('utf-8').split(','))
-    df = pd.read_csv(file)
-    df.to_excel('Active Site Count.xlsx', index=False, header=True)
-    os.remove(file)
 
-# Run for EACH Client
+    response = requests.request("POST", url, headers=headers, data=payload, auth=(usern, pword))
+    print('Status Code:')
+    print(response.status_code)
+    if response.status_code == 504:
+        url = "https://portal.site-controls.net/report-service/rest/v1/clients/56/runreport/6?outputformat=csv&" \
+                "emailresult=" + usern
 
-clientIDarr = ['3', '80', '75', '72', '88', '20', '52', '49', '94', '46', '55', '81']
-cont = 0
+        payload = "inputs=%5B%7B%22type%22%3A%22ReportInputField%22%2C%22label%22%3A%22Date%22%2C%22rank%22%3A1%2C" \
+                  "%22inputField%22%3A%7B%22type%22%3A%22InputField%22%2C%22name%22%3A%22day%22%2C%22value%22%3A%22" + \
+                  str(stopyr) + '-' + str(stopday) + '-' + str(stopmth2) + "%22%2C%22inputType%22%3A%22Date%22%7D%7D%5D "
+        headers = {
+            'Content-Type': 'application/x-www-form-urlencoded'
+        }
+        print('Active Site Count will be emailed to: ' + usern)
+    if response.status_code == 400:
+        print('Attemping to repull the report.')
+        time.sleep(5)
+        url = "https://portal.site-controls.net/report-service/rest/v1/clients/56/runreport/6?outputformat=csv"
+
+        payload = "inputs=%5B%7B%22type%22%3A%22ReportInputField%22%2C%22label%22%3A%22Date%22%2C%22rank%22%3A1%2C" \
+                  "%22inputField%22%3A%7B%22type%22%3A%22InputField%22%2C%22name%22%3A%22day%22%2C%22value%22%3A%22" + \
+                  str(stopyr) + '-' + str(stopday) + '-' + str(stopmth2) + "%22%2C%22inputType%22%3A%22Date%22%7D%7D%5D "
+        headers = {
+            'Content-Type': 'application/x-www-form-urlencoded'
+        }
+
+        response = requests.request("POST", url, headers=headers, data=payload, auth=(usern, pword))
+        print('Status Code:')
+        print(response.status_code)
+    if response.status_code == 200:
+        file = response.text
+        df = pd.read_csv(StringIO(file), sep=',')
+        df.to_excel('Active Site Count.xlsx', index=False, header=True, sheet_name='Active Site Count')
+        cont = cont + 1
+    else:
+        print('An error occured when pulling the Active Site Count Report. This report will need to be processed manually.')
+        cont = cont + 1
+
+# Run these reports for EACH Client
+
+clientIDarr = ['3', '80', '75', '72', '28', '20', '52', '49', '94', '46', '55', '81']
 clientname = 'quit'
 clientID = '1'
-# while cont < 12:
 for clientID in clientIDarr:
 
-    if clientID == '56':
-        clientname = 'ALDI'
-    elif clientID == '3':
+    if clientID == '3':
         clientname = 'MSI'
     elif clientID == '80':
         clientname = 'HFT'
@@ -140,7 +146,7 @@ for clientID in clientIDarr:
         clientname = 'TM'
     elif clientID == '72':
         clientname = 'SCVL'
-    elif clientID == '88':
+    elif clientID == '28':
         clientname = 'WM'
     elif clientID == '20':
         clientname = 'BL'
@@ -162,332 +168,431 @@ for clientID in clientIDarr:
     print(clientname)
 
     # Monthly KPI for Enterprise
-    print('Monthly KPI for Enterprise')
-    url = "https://portal.site-controls.net/report-service/rest/v1/clients/" + clientID + \
-          "/runreport/98?outputformat=csv"
-
-    payload = "inputs=%5B%7B%22type%22%3A%22ReportInputField%22%2C%22label%22%3A%22Clientdb%22%2C%22rank%22%3A1" \
-              "%2C%22inputField%22%3A%7B%22type%22%3A%22InputField%22%2C%22name%22%3A%22clientdb%22%2C%22value%22" \
-              "%3A%22%22%2C%22inputType%22%3A%22ClientDB%22%7D%7D%2C%7B%22type%22%3A%22ReportInputField%22%2C" \
-              "%22label%22%3A%22Month+Begin%22%2C%22rank%22%3A2%2C%22inputField%22%3A%7B%22type%22%3A" \
-              "%22InputField%22%2C%22name%22%3A%22month_begin%22%2C%22value%22%3A%22" + str(startmth) + \
-              "%22%2C%22inputType%22%3A%22PickOne%22%7D%7D%2C%7B%22type%22%3A%22ReportInputField%22%2C%22label%22" \
-              "%3A%22Year+Begin%22%2C%22rank%22%3A3%2C%22inputField%22%3A%7B%22type%22%3A%22InputField%22%2C" \
-              "%22name%22%3A%22year_begin%22%2C%22value%22%3A%22" + str(startyr) + \
-              "%22%2C%22inputType%22%3A%22PickOne%22%7D%7D%2C%7B%22type%22%3A%22ReportInputField%22%2C%22label%22" \
-              "%3A%22Month+End%22%2C%22rank%22%3A4%2C%22inputField%22%3A%7B%22type%22%3A%22InputField%22%2C" \
-              "%22name%22%3A%22month_end%22%2C%22value%22%3A%22" + str(stopmth) + \
-              "%22%2C%22inputType%22%3A%22PickOne%22%7D%7D%2C%7B%22type%22%3A%22ReportInputField%22%2C%22label%22" \
-              "%3A%22Year+End%22%2C%22rank%22%3A5%2C%22inputField%22%3A%7B%22type%22%3A%22InputField%22%2C%22name" \
-              "%22%3A%22year_end%22%2C%22value%22%3A%22" + str(stopyr) + \
-              "%22%2C%22inputType%22%3A%22PickOne%22%7D%7D%5D "
-    headers = {
-        'Content-Type': 'application/x-www-form-urlencoded'
-    }
-
-    response = requests.request("POST", url, headers=headers, data=payload, auth=(usern, pword))
+    cont = 0
+    time.sleep(5)
     print()
-    print('Monthly KPI for Enteriprise')
-    print('Status Code:')
-    print(response.status_code)
-    if response.status_code == 504:
+    print('Monthly KPI for Enterprise ' + clientname)
+    while cont == 0:
         url = "https://portal.site-controls.net/report-service/rest/v1/clients/" + clientID + \
-              "/runreport/98?outputformat=csv&emailresult=" + usern
+              "/runreport/98?outputformat=csv"
 
-        payload = "inputs=%5B%7B%22type%22%3A%22ReportInputField%22%2C%22label%22%3A%22Clientdb%22%2C%22rank%22" \
-                  "%3A1%2C%22inputField%22%3A%7B%22type%22%3A%22InputField%22%2C%22name%22%3A%22clientdb%22%2C" \
-                  "%22value%22%3A%22%22%2C%22inputType%22%3A%22ClientDB%22%7D%7D%2C%7B%22type%22%3A" \
-                  "%22ReportInputField%22%2C%22label%22%3A%22Month+Begin%22%2C%22rank%22%3A2%2C%22inputField%22" \
-                  "%3A%7B%22type%22%3A%22InputField%22%2C%22name%22%3A%22month_begin%22%2C%22value%22%3A%22" + \
-                  str(startmth) + "%22%2C%22inputType%22%3A%22PickOne%22%7D%7D%2C%7B%22type%22%3A" \
-                                  "%22ReportInputField%22%2C%22label%22%3A%22Year+Begin%22%2C%22rank%22%3A3%2C" \
-                                  "%22inputField%22%3A%7B%22type%22%3A%22InputField%22%2C%22name%22%3A" \
-                                  "%22year_begin%22%2C%22value%22%3A%22" + str(startyr) + \
-                  "%22%2C%22inputType%22%3A%22PickOne%22%7D%7D%2C%7B%22type%22%3A%22ReportInputField%22%2C" \
-                  "%22label%22%3A%22Month+End%22%2C%22rank%22%3A4%2C%22inputField%22%3A%7B%22type%22%3A" \
-                  "%22InputField%22%2C%22name%22%3A%22month_end%22%2C%22value%22%3A%22" + str(stopmth) + \
-                  "%22%2C%22inputType%22%3A%22PickOne%22%7D%7D%2C%7B%22type%22%3A%22ReportInputField%22%2C" \
-                  "%22label%22%3A%22Year+End%22%2C%22rank%22%3A5%2C%22inputField%22%3A%7B%22type%22%3A" \
-                  "%22InputField%22%2C%22name%22%3A%22year_end%22%2C%22value%22%3A%22" + str(stopyr) + \
+        payload = "inputs=%5B%7B%22type%22%3A%22ReportInputField%22%2C%22label%22%3A%22Clientdb%22%2C%22rank%22%3A1" \
+                  "%2C%22inputField%22%3A%7B%22type%22%3A%22InputField%22%2C%22name%22%3A%22clientdb%22%2C%22value%22" \
+                  "%3A%22%22%2C%22inputType%22%3A%22ClientDB%22%7D%7D%2C%7B%22type%22%3A%22ReportInputField%22%2C" \
+                  "%22label%22%3A%22Month+Begin%22%2C%22rank%22%3A2%2C%22inputField%22%3A%7B%22type%22%3A" \
+                  "%22InputField%22%2C%22name%22%3A%22month_begin%22%2C%22value%22%3A%22" + str(startmth) + \
+                  "%22%2C%22inputType%22%3A%22PickOne%22%7D%7D%2C%7B%22type%22%3A%22ReportInputField%22%2C%22label%22" \
+                  "%3A%22Year+Begin%22%2C%22rank%22%3A3%2C%22inputField%22%3A%7B%22type%22%3A%22InputField%22%2C" \
+                  "%22name%22%3A%22year_begin%22%2C%22value%22%3A%22" + str(startyr) + \
+                  "%22%2C%22inputType%22%3A%22PickOne%22%7D%7D%2C%7B%22type%22%3A%22ReportInputField%22%2C%22label%22" \
+                  "%3A%22Month+End%22%2C%22rank%22%3A4%2C%22inputField%22%3A%7B%22type%22%3A%22InputField%22%2C" \
+                  "%22name%22%3A%22month_end%22%2C%22value%22%3A%22" + str(stopmth) + \
+                  "%22%2C%22inputType%22%3A%22PickOne%22%7D%7D%2C%7B%22type%22%3A%22ReportInputField%22%2C%22label%22" \
+                  "%3A%22Year+End%22%2C%22rank%22%3A5%2C%22inputField%22%3A%7B%22type%22%3A%22InputField%22%2C%22name" \
+                  "%22%3A%22year_end%22%2C%22value%22%3A%22" + str(stopyr) + \
                   "%22%2C%22inputType%22%3A%22PickOne%22%7D%7D%5D "
         headers = {
             'Content-Type': 'application/x-www-form-urlencoded'
         }
-        response = requests.request("POST", url, headers=headers, data=payload, auth=(usern, pword))
-        print(clientname + 'Monthly KPI for Enterprise will be emailed to: ' + usern)
-    else:
-        file = 'KPI' + clientname + '.csv'
-        print('Saving ' + file + '.')
-        with open(file, "w", newline='') as f:
-            writer = csv.writer(f)
-            for line in response.iter_lines():
-                writer.writerow(line.decode('utf-8').split(','))
-        df = pd.read_csv(file)
-        df.to_excel('KPI' + clientname + '.xlsx', index=False, header=True)
-        os.remove(file)
-
-    # HVAC Health current year
-        print('HVAC Health - current year')
-        url = "https://portal.site-controls.net/report-service/rest/v1/clients/" + clientID + \
-              "/runreport/187?outputformat=csv"
-
-        payload = "inputs=%5B%7B%22type%22%3A%22ReportInputField%22%2C%22label%22%3A%22Clientdb%22%2C%22rank%22%3A1" \
-                  "%2C%22inputField%22%3A%7B%22type%22%3A%22InputField%22%2C%22name%22%3A%22clientdb%22%2C%22value%22" \
-                  "%3A%22%22%2C%22inputType%22%3A%22ClientDB%22%7D%7D%2C%7B%22type%22%3A%22ReportInputField%22%2C" \
-                  "%22label%22%3A%22After%22%2C%22rank%22%3A2%2C%22inputField%22%3A%7B%22type%22%3A%22InputField%22" \
-                  "%2C%22name%22%3A%22after%22%2C%22value%22%3A%22" + str(hhyrstart) + '-' + str(hhmstart) + '-' + \
-                  str(hhdstart) + "%22%2C%22inputType%22%3A%22Date%22%7D%7D%2C%7B%22type%22%3A%22ReportInputField%22" \
-                                  "%2C%22label%22%3A%22Before%22%2C%22rank%22%3A3%2C%22inputField%22%3A%7B%22type%22" \
-                                  "%3A%22InputField%22%2C%22name%22%3A%22before%22%2C%22value%22%3A%22" + \
-                  str(hhyrstop) + '-' + str(hhmstop) + '-' + str(hhdstop) + \
-                  "%22%2C%22inputType%22%3A%22Date%22%7D%7D%5D"
-
-        headers = {
-            'Content-Type': 'application/x-www-form-urlencoded'
-        }
 
         response = requests.request("POST", url, headers=headers, data=payload, auth=(usern, pword))
-        print()
-        print('HVAC Health Current Year')
         print('Status Code:')
         print(response.status_code)
-        if response.status_code == 504:
-            url = "https://portal.site-controls.net/report-service/rest/v1/clients/" + clientID + "/runreport/187" \
-                                                                                                  "?outputformat=csv" \
-                                                                                                  "&emailresult=" + \
-                  usern
+        if response.status_code == 400:
+            print('Attempting to repull the report.')
+            time.sleep(5)
+            url = "https://portal.site-controls.net/report-service/rest/v1/clients/" + clientID + \
+                  "/runreport/98?outputformat=csv"
 
-            payload = "inputs=%5B%7B%22type%22%3A%22ReportInputField%22%2C%22label%22%3A%22Clientdb%22%2C%22rank%22" \
-                      "%3A1%2C%22inputField%22%3A%7B%22type%22%3A%22InputField%22%2C%22name%22%3A%22clientdb%22%2C" \
-                      "%22value%22%3A%22%22%2C%22inputType%22%3A%22ClientDB%22%7D%7D%2C%7B%22type%22%3A" \
-                      "%22ReportInputField%22%2C%22label%22%3A%22After%22%2C%22rank%22%3A2%2C%22inputField%22%3A%7B" \
-                      "%22type%22%3A%22InputField%22%2C%22name%22%3A%22after%22%2C%22value%22%3A%22" + str(hhyrstart) \
-                      + '-' + str(hhmstart) + '-' + str(hhdstart) + \
-                      "%22%2C%22inputType%22%3A%22Date%22%7D%7D%2C%7B%22type%22%3A%22ReportInputField%22%2C%22label" \
-                      "%22%3A%22Before%22%2C%22rank%22%3A3%2C%22inputField%22%3A%7B%22type%22%3A%22InputField%22%2C" \
-                      "%22name%22%3A%22before%22%2C%22value%22%3A%22" + str(hhyrstop) + '-' + str(hhmstop) + '-' + \
-                      str(hhdstop) + "%22%2C%22inputType%22%3A%22Date%22%7D%7D%5D "
-
+            payload = "inputs=%5B%7B%22type%22%3A%22ReportInputField%22%2C%22label%22%3A%22Clientdb%22%2C%22rank%22%3A1" \
+                      "%2C%22inputField%22%3A%7B%22type%22%3A%22InputField%22%2C%22name%22%3A%22clientdb%22%2C%22value%22" \
+                      "%3A%22%22%2C%22inputType%22%3A%22ClientDB%22%7D%7D%2C%7B%22type%22%3A%22ReportInputField%22%2C" \
+                      "%22label%22%3A%22Month+Begin%22%2C%22rank%22%3A2%2C%22inputField%22%3A%7B%22type%22%3A" \
+                      "%22InputField%22%2C%22name%22%3A%22month_begin%22%2C%22value%22%3A%22" + str(startmth) + \
+                      "%22%2C%22inputType%22%3A%22PickOne%22%7D%7D%2C%7B%22type%22%3A%22ReportInputField%22%2C%22label%22" \
+                      "%3A%22Year+Begin%22%2C%22rank%22%3A3%2C%22inputField%22%3A%7B%22type%22%3A%22InputField%22%2C" \
+                      "%22name%22%3A%22year_begin%22%2C%22value%22%3A%22" + str(startyr) + \
+                      "%22%2C%22inputType%22%3A%22PickOne%22%7D%7D%2C%7B%22type%22%3A%22ReportInputField%22%2C%22label%22" \
+                      "%3A%22Month+End%22%2C%22rank%22%3A4%2C%22inputField%22%3A%7B%22type%22%3A%22InputField%22%2C" \
+                      "%22name%22%3A%22month_end%22%2C%22value%22%3A%22" + str(stopmth) + \
+                      "%22%2C%22inputType%22%3A%22PickOne%22%7D%7D%2C%7B%22type%22%3A%22ReportInputField%22%2C%22label%22" \
+                      "%3A%22Year+End%22%2C%22rank%22%3A5%2C%22inputField%22%3A%7B%22type%22%3A%22InputField%22%2C%22name" \
+                      "%22%3A%22year_end%22%2C%22value%22%3A%22" + str(stopyr) + \
+                      "%22%2C%22inputType%22%3A%22PickOne%22%7D%7D%5D "
             headers = {
                 'Content-Type': 'application/x-www-form-urlencoded'
             }
+
             response = requests.request("POST", url, headers=headers, data=payload, auth=(usern, pword))
-            print(clientname + 'HVAC Health current year will be emailed to: ' + usern)
-        else:
-            file = 'HH' + clientname + '20.csv'
-            print('Saving ' + file + '.')
-            with open(file, "w", newline='') as f:
-                writer = csv.writer(f)
-                for line in response.iter_lines():
-                    writer.writerow(line.decode('utf-8').split(','))
-            time.sleep(5)
-            df = pd.read_csv(file, sep=',')
-            df.to_excel('HH' + clientname + '20.xlsx', index=False, header=True)
-            os.remove(file)
-
-    # HVAC Health previous year
-        print('HVAC Health - previous year')
-        url = "https://portal.site-controls.net/report-service/rest/v1/clients/" + clientID + "/runreport/187" \
-                                                                                              "?outputformat=csv "
-
-        payload = "inputs=%5B%7B%22type%22%3A%22ReportInputField%22%2C%22label%22%3A%22Clientdb%22%2C%22rank%22%3A1" \
-                  "%2C%22inputField%22%3A%7B%22type%22%3A%22InputField%22%2C%22name%22%3A%22clientdb%22%2C%22value%22" \
-                  "%3A%22%22%2C%22inputType%22%3A%22ClientDB%22%7D%7D%2C%7B%22type%22%3A%22ReportInputField%22%2C" \
-                  "%22label%22%3A%22After%22%2C%22rank%22%3A2%2C%22inputField%22%3A%7B%22type%22%3A%22InputField%22" \
-                  "%2C%22name%22%3A%22after%22%2C%22value%22%3A%22" + str(hhyrstart2) + '-' + str(hhmstart) + '-' + \
-                  str(hhdstart) + "%22%2C%22inputType%22%3A%22Date%22%7D%7D%2C%7B%22type%22%3A%22ReportInputField%22" \
-                                  "%2C%22label%22%3A%22Before%22%2C%22rank%22%3A3%2C%22inputField%22%3A%7B%22type%22" \
-                                  "%3A%22InputField%22%2C%22name%22%3A%22before%22%2C%22value%22%3A%22" + \
-                  str(hhyrstop2) + '-' + str(hhmstop) + '-' + str(hhdstop) + "%22%2C%22inputType%22%3A%22Date%22%7D" \
-                                                                             "%7D%5D "
-
-        headers = {
-            'Content-Type': 'application/x-www-form-urlencoded'
-        }
-
-        response = requests.request("POST", url, headers=headers, data=payload, auth=(usern, pword))
-        print()
-        print('HVAC Health Previous Year')
-        print('Status Code:')
-        print(response.status_code)
+            print('Status Code:')
+            print(response.status_code)
         if response.status_code == 504:
             url = "https://portal.site-controls.net/report-service/rest/v1/clients/" + clientID + \
-              "/runreport/187?outputformat=csv&emailresult=" + usern
+                  "/runreport/98?outputformat=csv&emailresult=" + usern
 
             payload = "inputs=%5B%7B%22type%22%3A%22ReportInputField%22%2C%22label%22%3A%22Clientdb%22%2C%22rank%22" \
                       "%3A1%2C%22inputField%22%3A%7B%22type%22%3A%22InputField%22%2C%22name%22%3A%22clientdb%22%2C" \
                       "%22value%22%3A%22%22%2C%22inputType%22%3A%22ClientDB%22%7D%7D%2C%7B%22type%22%3A" \
-                      "%22ReportInputField%22%2C%22label%22%3A%22After%22%2C%22rank%22%3A2%2C%22inputField%22%3A%7B" \
-                      "%22type%22%3A%22InputField%22%2C%22name%22%3A%22after%22%2C%22value%22%3A%22" + \
-                      str(hhyrstart2) + '-' + str(hhmstart) + '-' + str(hhdstart) + \
-                      "%22%2C%22inputType%22%3A%22Date%22%7D%7D%2C%7B%22type%22%3A%22ReportInputField%22%2C%22label" \
-                      "%22%3A%22Before%22%2C%22rank%22%3A3%2C%22inputField%22%3A%7B%22type%22%3A%22InputField%22%2C" \
-                      "%22name%22%3A%22before%22%2C%22value%22%3A%22" + str(hhyrstop2) + '-' + str(hhmstop) + '-' + \
-                      str(hhdstop) + "%22%2C%22inputType%22%3A%22Date%22%7D%7D%5D "
+                      "%22ReportInputField%22%2C%22label%22%3A%22Month+Begin%22%2C%22rank%22%3A2%2C%22inputField%22" \
+                      "%3A%7B%22type%22%3A%22InputField%22%2C%22name%22%3A%22month_begin%22%2C%22value%22%3A%22" + \
+                      str(startmth) + "%22%2C%22inputType%22%3A%22PickOne%22%7D%7D%2C%7B%22type%22%3A" \
+                                      "%22ReportInputField%22%2C%22label%22%3A%22Year+Begin%22%2C%22rank%22%3A3%2C" \
+                                      "%22inputField%22%3A%7B%22type%22%3A%22InputField%22%2C%22name%22%3A" \
+                                      "%22year_begin%22%2C%22value%22%3A%22" + str(startyr) + \
+                      "%22%2C%22inputType%22%3A%22PickOne%22%7D%7D%2C%7B%22type%22%3A%22ReportInputField%22%2C" \
+                      "%22label%22%3A%22Month+End%22%2C%22rank%22%3A4%2C%22inputField%22%3A%7B%22type%22%3A" \
+                      "%22InputField%22%2C%22name%22%3A%22month_end%22%2C%22value%22%3A%22" + str(stopmth) + \
+                      "%22%2C%22inputType%22%3A%22PickOne%22%7D%7D%2C%7B%22type%22%3A%22ReportInputField%22%2C" \
+                      "%22label%22%3A%22Year+End%22%2C%22rank%22%3A5%2C%22inputField%22%3A%7B%22type%22%3A" \
+                      "%22InputField%22%2C%22name%22%3A%22year_end%22%2C%22value%22%3A%22" + str(stopyr) + \
+                      "%22%2C%22inputType%22%3A%22PickOne%22%7D%7D%5D "
+            headers = {
+                'Content-Type': 'application/x-www-form-urlencoded'
+            }
+            response = requests.request("POST", url, headers=headers, data=payload, auth=(usern, pword))
+            print(clientname + 'Monthly KPI for Enterprise will be emailed to: ' + usern)
+        if response.status_code == 200:
+            file = response.text
+            df = pd.read_csv(StringIO(file), sep=',')
+            df.to_excel('KPI' + clientname + '.xlsx', index=False, header=True, sheet_name='KPI' + clientname)
+            cont = cont + 1
+        else:
+            print('An error occured when pulling the HVAC Health - previous year report for ' + clientname + '. This report will need to be processed manually.')
+            cont = cont + 1
+
+# HVAC Health current year
+
+    print()
+    print('HVAC Health - current year ' + clientname)
+    time.sleep(5)
+    cont = 0
+    while cont == 0:
+        try:
+            url = "https://portal.site-controls.net/report-service/rest/v1/clients/" + clientID + \
+                  "/runreport/187?outputformat=csv"
+
+            payload = "inputs=%5B%7B%22type%22%3A%22ReportInputField%22%2C%22label%22%3A%22Clientdb%22%2C%22rank%22%3A1" \
+                      "%2C%22inputField%22%3A%7B%22type%22%3A%22InputField%22%2C%22name%22%3A%22clientdb%22%2C%22value%22" \
+                      "%3A%22%22%2C%22inputType%22%3A%22ClientDB%22%7D%7D%2C%7B%22type%22%3A%22ReportInputField%22%2C" \
+                      "%22label%22%3A%22After%22%2C%22rank%22%3A2%2C%22inputField%22%3A%7B%22type%22%3A%22InputField%22" \
+                      "%2C%22name%22%3A%22after%22%2C%22value%22%3A%22" + str(hhyrstart) + '-' + str(hhmstart) + '-' + \
+                      str(hhdstart) + "%22%2C%22inputType%22%3A%22Date%22%7D%7D%2C%7B%22type%22%3A%22ReportInputField%22" \
+                                      "%2C%22label%22%3A%22Before%22%2C%22rank%22%3A3%2C%22inputField%22%3A%7B%22type%22" \
+                                      "%3A%22InputField%22%2C%22name%22%3A%22before%22%2C%22value%22%3A%22" + \
+                      str(hhyrstop) + '-' + str(hhmstop) + '-' + str(hhdstop) + \
+                      "%22%2C%22inputType%22%3A%22Date%22%7D%7D%5D"
+
+            headers = {
+                'Content-Type': 'application/x-www-form-urlencoded'
+            }
+
+            response = requests.request("POST", url, headers=headers, data=payload, auth=(usern, pword))
+            print()
+            print('Status Code:')
+            print(response.status_code)
+            if response.status_code == 400:
+                print('Attempting to repull the report.')
+                time.sleep(5)
+                url = "https://portal.site-controls.net/report-service/rest/v1/clients/" + clientID + \
+                      "/runreport/187?outputformat=csv"
+
+                payload = "inputs=%5B%7B%22type%22%3A%22ReportInputField%22%2C%22label%22%3A%22Clientdb%22%2C%22rank%22%3A1" \
+                          "%2C%22inputField%22%3A%7B%22type%22%3A%22InputField%22%2C%22name%22%3A%22clientdb%22%2C%22value%22" \
+                          "%3A%22%22%2C%22inputType%22%3A%22ClientDB%22%7D%7D%2C%7B%22type%22%3A%22ReportInputField%22%2C" \
+                          "%22label%22%3A%22After%22%2C%22rank%22%3A2%2C%22inputField%22%3A%7B%22type%22%3A%22InputField%22" \
+                          "%2C%22name%22%3A%22after%22%2C%22value%22%3A%22" + str(hhyrstart) + '-' + str(hhmstart) + '-' + \
+                          str(hhdstart) + "%22%2C%22inputType%22%3A%22Date%22%7D%7D%2C%7B%22type%22%3A%22ReportInputField%22" \
+                                          "%2C%22label%22%3A%22Before%22%2C%22rank%22%3A3%2C%22inputField%22%3A%7B%22type%22" \
+                                          "%3A%22InputField%22%2C%22name%22%3A%22before%22%2C%22value%22%3A%22" + \
+                          str(hhyrstop) + '-' + str(hhmstop) + '-' + str(hhdstop) + \
+                          "%22%2C%22inputType%22%3A%22Date%22%7D%7D%5D"
+
+                headers = {
+                    'Content-Type': 'application/x-www-form-urlencoded'
+                }
+
+                response = requests.request("POST", url, headers=headers, data=payload, auth=(usern, pword))
+                print()
+                print('Status Code:')
+                print(response.status_code)
+            if response.status_code == 504:
+                url = "https://portal.site-controls.net/report-service/rest/v1/clients/" + clientID + "/runreport/187" \
+                                                                                                      "?outputformat=csv" \
+                                                                                                      "&emailresult=" + \
+                      usern
+
+                payload = "inputs=%5B%7B%22type%22%3A%22ReportInputField%22%2C%22label%22%3A%22Clientdb%22%2C%22rank%22" \
+                          "%3A1%2C%22inputField%22%3A%7B%22type%22%3A%22InputField%22%2C%22name%22%3A%22clientdb%22%2C" \
+                          "%22value%22%3A%22%22%2C%22inputType%22%3A%22ClientDB%22%7D%7D%2C%7B%22type%22%3A" \
+                          "%22ReportInputField%22%2C%22label%22%3A%22After%22%2C%22rank%22%3A2%2C%22inputField%22%3A%7B" \
+                          "%22type%22%3A%22InputField%22%2C%22name%22%3A%22after%22%2C%22value%22%3A%22" + str(hhyrstart) \
+                          + '-' + str(hhmstart) + '-' + str(hhdstart) + \
+                          "%22%2C%22inputType%22%3A%22Date%22%7D%7D%2C%7B%22type%22%3A%22ReportInputField%22%2C%22label" \
+                          "%22%3A%22Before%22%2C%22rank%22%3A3%2C%22inputField%22%3A%7B%22type%22%3A%22InputField%22%2C" \
+                          "%22name%22%3A%22before%22%2C%22value%22%3A%22" + str(hhyrstop) + '-' + str(hhmstop) + '-' + \
+                          str(hhdstop) + "%22%2C%22inputType%22%3A%22Date%22%7D%7D%5D "
+
+                headers = {
+                    'Content-Type': 'application/x-www-form-urlencoded'
+                }
+                response = requests.request("POST", url, headers=headers, data=payload, auth=(usern, pword))
+                print(clientname + 'HVAC Health current year will be emailed to: ' + usern)
+            if response.status_code == 200:
+                file = response.text
+                df = pd.read_csv(StringIO(file), sep=',')
+                df.to_excel('HH' + clientname + '20.xlsx', index=False, header=True, sheet_name='HH' + clientname + '20')
+                cont = cont + 1
+            else:
+                print('An error occured when pulling the HVAC Health - previous year report for ' + clientname + '. This report will need to be processed manually.')
+                cont = cont + 1
+        except:
+            print('An error occured when pulling the HVAC Health - previous year report for ' + clientname + '. This report will need to be processed manually.')
+            cont = cont + 1
+
+# HVAC Health previous year
+
+    print()
+    print('HVAC Health - previous year ' + clientname)
+    time.sleep(5)
+    cont = 0
+    while cont == 0:
+        try:
+            url = "https://portal.site-controls.net/report-service/rest/v1/clients/" + clientID + "/runreport/187" \
+                                                                                              "?outputformat=csv "
+
+            payload = "inputs=%5B%7B%22type%22%3A%22ReportInputField%22%2C%22label%22%3A%22Clientdb%22%2C%22rank%22%3A1" \
+                      "%2C%22inputField%22%3A%7B%22type%22%3A%22InputField%22%2C%22name%22%3A%22clientdb%22%2C%22value%22" \
+                      "%3A%22%22%2C%22inputType%22%3A%22ClientDB%22%7D%7D%2C%7B%22type%22%3A%22ReportInputField%22%2C" \
+                      "%22label%22%3A%22After%22%2C%22rank%22%3A2%2C%22inputField%22%3A%7B%22type%22%3A%22InputField%22" \
+                      "%2C%22name%22%3A%22after%22%2C%22value%22%3A%22" + str(hhyrstart2) + '-' + str(hhmstart) + '-' + \
+                      str(hhdstart) + "%22%2C%22inputType%22%3A%22Date%22%7D%7D%2C%7B%22type%22%3A%22ReportInputField%22" \
+                                      "%2C%22label%22%3A%22Before%22%2C%22rank%22%3A3%2C%22inputField%22%3A%7B%22type%22" \
+                                      "%3A%22InputField%22%2C%22name%22%3A%22before%22%2C%22value%22%3A%22" + \
+                      str(hhyrstop2) + '-' + str(hhmstop) + '-' + str(hhdstop) + "%22%2C%22inputType%22%3A%22Date%22%7D" \
+                                                                                 "%7D%5D "
+
+            headers = {
+                'Content-Type': 'application/x-www-form-urlencoded'
+            }
+
+            response = requests.request("POST", url, headers=headers, data=payload, auth=(usern, pword))
+            print('HVAC Health Previous Year')
+            print('Status Code:')
+            print(response.status_code)
+            if response.status_code == 400:
+                print('Attempting to repull the report')
+                time.sleep(5)
+                url = "https://portal.site-controls.net/report-service/rest/v1/clients/" + clientID + "/runreport/187" \
+                                                                                                      "?outputformat=csv "
+
+                payload = "inputs=%5B%7B%22type%22%3A%22ReportInputField%22%2C%22label%22%3A%22Clientdb%22%2C%22rank%22%3A1" \
+                          "%2C%22inputField%22%3A%7B%22type%22%3A%22InputField%22%2C%22name%22%3A%22clientdb%22%2C%22value%22" \
+                          "%3A%22%22%2C%22inputType%22%3A%22ClientDB%22%7D%7D%2C%7B%22type%22%3A%22ReportInputField%22%2C" \
+                          "%22label%22%3A%22After%22%2C%22rank%22%3A2%2C%22inputField%22%3A%7B%22type%22%3A%22InputField%22" \
+                          "%2C%22name%22%3A%22after%22%2C%22value%22%3A%22" + str(hhyrstart2) + '-' + str(hhmstart) + '-' + \
+                          str(hhdstart) + "%22%2C%22inputType%22%3A%22Date%22%7D%7D%2C%7B%22type%22%3A%22ReportInputField%22" \
+                                          "%2C%22label%22%3A%22Before%22%2C%22rank%22%3A3%2C%22inputField%22%3A%7B%22type%22" \
+                                          "%3A%22InputField%22%2C%22name%22%3A%22before%22%2C%22value%22%3A%22" + \
+                          str(hhyrstop2) + '-' + str(hhmstop) + '-' + str(hhdstop) + "%22%2C%22inputType%22%3A%22Date%22%7D" \
+                                                                                     "%7D%5D "
+
+                headers = {
+                    'Content-Type': 'application/x-www-form-urlencoded'
+                }
+
+                response = requests.request("POST", url, headers=headers, data=payload, auth=(usern, pword))
+                print('HVAC Health Previous Year')
+                print('Status Code:')
+                print(response.status_code)
+            if response.status_code == 504:
+                url = "https://portal.site-controls.net/report-service/rest/v1/clients/" + clientID + \
+                  "/runreport/187?outputformat=csv&emailresult=" + usern
+
+                payload = "inputs=%5B%7B%22type%22%3A%22ReportInputField%22%2C%22label%22%3A%22Clientdb%22%2C%22rank%22" \
+                          "%3A1%2C%22inputField%22%3A%7B%22type%22%3A%22InputField%22%2C%22name%22%3A%22clientdb%22%2C" \
+                          "%22value%22%3A%22%22%2C%22inputType%22%3A%22ClientDB%22%7D%7D%2C%7B%22type%22%3A" \
+                          "%22ReportInputField%22%2C%22label%22%3A%22After%22%2C%22rank%22%3A2%2C%22inputField%22%3A%7B" \
+                          "%22type%22%3A%22InputField%22%2C%22name%22%3A%22after%22%2C%22value%22%3A%22" + \
+                          str(hhyrstart2) + '-' + str(hhmstart) + '-' + str(hhdstart) + \
+                          "%22%2C%22inputType%22%3A%22Date%22%7D%7D%2C%7B%22type%22%3A%22ReportInputField%22%2C%22label" \
+                          "%22%3A%22Before%22%2C%22rank%22%3A3%2C%22inputField%22%3A%7B%22type%22%3A%22InputField%22%2C" \
+                          "%22name%22%3A%22before%22%2C%22value%22%3A%22" + str(hhyrstop2) + '-' + str(hhmstop) + '-' + \
+                          str(hhdstop) + "%22%2C%22inputType%22%3A%22Date%22%7D%7D%5D "
+
+                headers = {
+                    'Content-Type': 'application/x-www-form-urlencoded'
+                }
+                response = requests.request("POST", url, headers=headers, data=payload, auth=(usern, pword))
+                print('HVAC Health previous year will be emailed to: ' + usern)
+            if response.status_code == 200:
+                file = response.text
+                df = pd.read_csv(StringIO(file), sep=',')
+                df.to_excel('HH' + clientname + '19.xlsx', index=False, header=True, sheet_name='HH' + clientname + '19')
+                cont = cont + 1
+            else:
+                print('An error occured when pulling the HVAC Health - previous year report for ' + clientname + '. This report will need to be processed manually.')
+                cont = cont + 1
+        except:
+            print('An error occured when pulling the HVAC Health - previous year report for ' + clientname + '. This report will need to be processed manually.')
+            cont = cont + 1
+
+# Demand Stats - Current Year
+
+    print()
+    print('Demand Stats - Current Year ' + clientname)
+    time.sleep(5)
+    cont = 0
+    while cont == 0:
+        try:
+            url = "https://portal.site-controls.net/report-service/rest/v1/clients/" + clientID + "/runreport/110?outputformat=csv"
+            payload = "inputs=%5B%7B%22type%22%3A%22ReportInputField%22%2C%22label%22%3A%22Clientdb%22%2C%22rank%22%3A1%2C%22inputField%22%3A%7B%22type%22%3A%22InputField%22%2C%22name%22%3A%22clientdb%22%2C%22value%22%3A%22%22%2C%22inputType%22%3A%22ClientDB%22%7D%7D%2C%7B%22type%22%3A%22ReportInputField%22%2C%22label%22%3A%22After%22%2C%22rank%22%3A2%2C%22inputField%22%3A%7B%22type%22%3A%22InputField%22%2C%22name%22%3A%22after%22%2C%22value%22%3A%22" + str(stopyr) + '-' + str(stopmth) + '-' + hhdstart + "%22%2C%22inputType%22%3A%22Date%22%7D%7D%2C%7B%22type%22%3A%22ReportInputField%22%2C%22label%22%3A%22Numofdays%22%2C%22rank%22%3A3%2C%22inputField%22%3A%7B%22type%22%3A%22InputField%22%2C%22name%22%3A%22numofdays%22%2C%22value%22%3A%22" + str(dsdur) + "%22%2C%22inputType%22%3A%22Integer%22%7D%7D%5D"
 
             headers = {
                 'Content-Type': 'application/x-www-form-urlencoded'
             }
             response = requests.request("POST", url, headers=headers, data=payload, auth=(usern, pword))
-            print('HVAC Health previous year will be emailed to: ' + usern)
-        else:
-            file = 'HH' + clientname + '19.csv'
-            print(clientname + 'Saving ' + file + '.')
-            with open(file, "w", newline='') as f:
-                writer = csv.writer(f)
-                for line in response.iter_lines():
-                    writer.writerow(line.decode('utf-8').split(','))
-            time.sleep(5)
-            df = pd.read_csv(file)
-            df.to_excel('HH' + clientname + '19.xlsx', index=False, header=True)
-            os.remove(file)
+            print('Status Code:')
+            print(response.status_code)
+            if response.status_code == 400:
+                print('Attempting to repull the report')
+                time.sleep(5)
+                url = "https://portal.site-controls.net/report-service/rest/v1/clients/" + clientID + "/runreport/110?outputformat=csv"
+                payload = "inputs=%5B%7B%22type%22%3A%22ReportInputField%22%2C%22label%22%3A%22Clientdb%22%2C%22rank%22%3A1%2C%22inputField%22%3A%7B%22type%22%3A%22InputField%22%2C%22name%22%3A%22clientdb%22%2C%22value%22%3A%22%22%2C%22inputType%22%3A%22ClientDB%22%7D%7D%2C%7B%22type%22%3A%22ReportInputField%22%2C%22label%22%3A%22After%22%2C%22rank%22%3A2%2C%22inputField%22%3A%7B%22type%22%3A%22InputField%22%2C%22name%22%3A%22after%22%2C%22value%22%3A%22" + str(stopyr) + '-' + str(stopmth) + '-' + hhdstart + "%22%2C%22inputType%22%3A%22Date%22%7D%7D%2C%7B%22type%22%3A%22ReportInputField%22%2C%22label%22%3A%22Numofdays%22%2C%22rank%22%3A3%2C%22inputField%22%3A%7B%22type%22%3A%22InputField%22%2C%22name%22%3A%22numofdays%22%2C%22value%22%3A%22" + str(dsdur) + "%22%2C%22inputType%22%3A%22Integer%22%7D%7D%5D"
 
-    # Demand Stats
-    print('Demand Stats')
-    url = "https://portal.site-controls.net/report-service/rest/v1/clients/" + clientID + "/runreport/110" \
-                                                                                          "?outputformat=csv "
+                headers = {
+                    'Content-Type': 'application/x-www-form-urlencoded'
+                }
+                response = requests.request("POST", url, headers=headers, data=payload, auth=(usern, pword))
+                print('Status Code:')
+                print(response.status_code)
+            if response.status_code == 504:
+                url = "https://portal.site-controls.net/report-service/rest/v1/clients/" + clientID + "/runreport/110?outputformat=csv&emailresult=" + usern
 
-    payload = "inputs=%5B%7B%22type%22%3A%22ReportInputField%22%2C%22label%22%3A%22Clientdb%22%2C%22rank%22%3A1" \
-              "%2C%22inputField%22%3A%7B%22type%22%3A%22InputField%22%2C%22name%22%3A%22clientdb%22%2C%22value%22" \
-              "%3A%22%22%2C%22inputType%22%3A%22ClientDB%22%7D%7D%2C%7B%22type%22%3A%22ReportInputField%22%2C" \
-              "%22label%22%3A%22After%22%2C%22rank%22%3A2%2C%22inputField%22%3A%7B%22type%22%3A%22InputField%22" \
-              "%2C%22name%22%3A%22after%22%2C%22value%22%3A%22" + \
-              str(hhyrstart) + '-' + str(hhmstart) + '-' + str(hhdstart) + \
-              "%22%2C%22inputType%22%3A%22Date%22%7D%7D%2C%7B%22type%22%3A%22ReportInputField%22%2C%22label%22%3A" \
-              "%22Numofdays%22%2C%22rank%22%3A3%2C%22inputField%22%3A%7B%22type%22%3A%22InputField%22%2C%22name" \
-              "%22%3A%22numofdays%22%2C%22value%22%3A%22" + str(dsdur) + "%22%2C%22inputType%22%3A%22Integer%22" \
-                                                                         "%7D%7D%5D "
+                payload = "inputs=%5B%7B%22type%22%3A%22ReportInputField%22%2C%22label%22%3A%22Clientdb%22%2C%22rank%22%3A1%2C%22inputField%22%3A%7B%22type%22%3A%22InputField%22%2C%22name%22%3A%22clientdb%22%2C%22value%22%3A%22%22%2C%22inputType%22%3A%22ClientDB%22%7D%7D%2C%7B%22type%22%3A%22ReportInputField%22%2C%22label%22%3A%22After%22%2C%22rank%22%3A2%2C%22inputField%22%3A%7B%22type%22%3A%22InputField%22%2C%22name%22%3A%22after%22%2C%22value%22%3A%22" + str(stopyr) + '-' + str(stopmth) + '-' + hhdstart + "%22%2C%22inputType%22%3A%22Date%22%7D%7D%2C%7B%22type%22%3A%22ReportInputField%22%2C%22label%22%3A%22Numofdays%22%2C%22rank%22%3A3%2C%22inputField%22%3A%7B%22type%22%3A%22InputField%22%2C%22name%22%3A%22numofdays%22%2C%22value%22%3A%22" + str(dsdur) + "%22%2C%22inputType%22%3A%22Integer%22%7D%7D%5D"
 
-    headers = {
-        'Content-Type': 'application/x-www-form-urlencoded'
-    }
-
-    response = requests.request("POST", url, headers=headers, data=payload, auth=(usern, pword))
-    print()
-    print('Demand Stats')
-    print('Status Code:')
-    print(response.status_code)
-    if response.status_code == 504:
-        url = "https://portal.site-controls.net/report-service/rest/v1/clients/" + clientID + "/runreport/110" \
-                                                                                              "?outputformat=csv" \
-                                                                                              "&emailresult=" + \
-              usern
-
-        payload = "inputs=%5B%7B%22type%22%3A%22ReportInputField%22%2C%22label%22%3A%22Clientdb%22%2C%22rank%22" \
-                  "%3A1%2C%22inputField%22%3A%7B%22type%22%3A%22InputField%22%2C%22name%22%3A%22clientdb%22%2C" \
-                  "%22value%22%3A%22%22%2C%22inputType%22%3A%22ClientDB%22%7D%7D%2C%7B%22type%22%3A" \
-                  "%22ReportInputField%22%2C%22label%22%3A%22After%22%2C%22rank%22%3A2%2C%22inputField%22%3A%7B" \
-                  "%22type%22%3A%22InputField%22%2C%22name%22%3A%22after%22%2C%22value%22%3A%22" + \
-                  str(hhyrstart) + '-' + str(hhmstart) + '-' + str(hhdstart) + \
-                  "%22%2C%22inputType%22%3A%22Date%22%7D%7D%2C%7B%22type%22%3A%22ReportInputField%22%2C%22label" \
-                  "%22%3A%22Numofdays%22%2C%22rank%22%3A3%2C%22inputField%22%3A%7B%22type%22%3A%22InputField%22" \
-                  "%2C%22name%22%3A%22numofdays%22%2C%22value%22%3A%22" + str(dsdur) + "%22%2C%22inputType%22%3A" \
-                                                                                       "%22Integer%22%7D%7D%5D "
-
-        headers = {
-            'Content-Type': 'application/x-www-form-urlencoded'
-        }
-        response = requests.request("POST", url, headers=headers, data=payload, auth=(usern, pword))
-        print(clientname + 'Demand Stats will be emailed to: ' + usern)
-    else:
-        file = 'DS' + clientname + '.csv'
-        print('Saving ' + file + '.')
-        with open(file, "w", newline='') as f:
-            writer = csv.writer(f)
-            for line in response.iter_lines():
-                writer.writerow(line.decode('utf-8').split(','))
-        time.sleep(5)
-        df = pd.read_csv(file)
-        df.to_excel('DS' + clientname + '.xlsx', index=False, header=True)
-        os.remove(file)
+                headers = {
+                    'Content-Type': 'application/x-www-form-urlencoded'
+                }
+                response = requests.request("POST", url, headers=headers, data=payload, auth=(usern, pword))
+                print(clientname + 'Demand Stats will be emailed to: ' + usern)
+            if response.status_code == 200:
+                file = response.text
+                df = pd.read_csv(StringIO(file), sep=',')
+                df.to_excel('DS' + clientname + '.xlsx', index=False, header=True, sheet_name='DS' + clientname)
+                cont = cont + 1
+            else:
+                print('An error occured when pulling the Demand Stats report for ' + clientname + '. This report will need to be processed manually.')
+                cont = cont + 1
+        except:
+            print('An error occured when pulling the Demand Stats report for ' + clientname + '. This report will need to be processed manually.')
+            cont = cont + 1
 
     # Setpoints
-    print('Setpoints')
-    url = "https://portal.site-controls.net/report-service/rest/v1/clients/" + clientID + "/runreport/78" \
-                                                                                          "?outputformat=csv "
-
-    payload = "inputs=%5B%7B%22type%22%3A%22ReportInputField%22%2C%22label%22%3A%22Clientdb%22%2C%22rank%22%3A1" \
-              "%2C%22inputField%22%3A%7B%22type%22%3A%22InputField%22%2C%22name%22%3A%22clientdb%22%2C%22value%22" \
-              "%3A%22%22%2C%22inputType%22%3A%22ClientDB%22%7D%7D%5D "
-    headers = {
-        'Content-Type': 'application/x-www-form-urlencoded'
-    }
-
-    response = requests.request("POST", url, headers=headers, data=payload, auth=(usern, pword))
     print()
-    print('Setpoints')
-    print('Status Code:')
-    print(response.status_code)
-    if response.status_code == 504:
-        url = "https://portal.site-controls.net/report-service/rest/v1/clients/" + clientID + "/runreport/78" \
-                                                                                              "?outputformat=csv" \
-                                                                                              "&emailresult=" + \
-              usern
+    print('Setpoints ' + clientname)
+    time.sleep(5)
+    cont = 0
+    while cont == 0:
+        try:
+            url = "https://portal.site-controls.net/report-service/rest/v1/clients/" + clientID + "/runreport/78?outputformat=csv"
 
-        payload = "inputs=%5B%7B%22type%22%3A%22ReportInputField%22%2C%22label%22%3A%22Clientdb%22%2C%22rank%22" \
-                  "%3A1%2C%22inputField%22%3A%7B%22type%22%3A%22InputField%22%2C%22name%22%3A%22clientdb%22%2C" \
-                  "%22value%22%3A%22%22%2C%22inputType%22%3A%22ClientDB%22%7D%7D%5D "
-        headers = {
-            'Content-Type': 'application/x-www-form-urlencoded'
-        }
-        response = requests.request("POST", url, headers=headers, data=payload, auth=(usern, pword))
-        print(clientname + ' Setpoints will be emailed to ' + usern)
-    else:
-        file = 'SP' + clientname + '.csv'
-        print('Saving ' + file + '.')
-        with open(file, "w", newline='') as f:
-            writer = csv.writer(f)
-            for line in response.iter_lines():
-                writer.writerow(line.decode('utf-8').split(','))
-        time.sleep(5)
-        df = pd.read_csv(file)
-        df.to_excel('SP' + clientname + '.xlsx', index=False, header=True)
-        os.remove(file)
+            payload = "inputs=%5B%7B%22type%22%3A%22ReportInputField%22%2C%22label%22%3A%22Clientdb%22%2C%22rank%22%3A1%2C%22inputField%22%3A%7B%22type%22%3A%22InputField%22%2C%22name%22%3A%22clientdb%22%2C%22value%22%3A%22%22%2C%22inputType%22%3A%22ClientDB%22%7D%7D%5D"
+            headers = {
+                'Content-Type': 'application/x-www-form-urlencoded'
+            }
 
-    # Security Integration
-    url = "https://portal.site-controls.net/report-service/rest/v1/clients/" + clientID + "/runreport/266" \
-                                                                                          "?outputformat=csv "
+            response = requests.request("POST", url, headers=headers, data=payload, auth=(usern, pword))
+            print('Status Code:')
+            print(response.status_code)
+            if response.status_code == 400:
+                print('Attempting to repull the report')
+                time.sleep(5)
+                url = "https://portal.site-controls.net/report-service/rest/v1/clients/" + clientID + "/runreport/78?outputformat=csv"
 
-    payload = "inputs=%5B%7B%22type%22%3A%22ReportInputField%22%2C%22label%22%3A%22Clientdb%22%2C%22rank%22%3A1" \
-              "%2C%22inputField%22%3A%7B%22type%22%3A%22InputField%22%2C%22name%22%3A%22clientdb%22%2C%22value%22" \
-              "%3A%22%22%2C%22inputType%22%3A%22ClientDB%22%7D%7D%5D "
-    headers = {
-        'Content-Type': 'application/x-www-form-urlencoded'
-    }
-    response = requests.request("POST", url, headers=headers, data=payload, auth=(usern, pword))
+                payload = "inputs=%5B%7B%22type%22%3A%22ReportInputField%22%2C%22label%22%3A%22Clientdb%22%2C%22rank%22%3A1%2C%22inputField%22%3A%7B%22type%22%3A%22InputField%22%2C%22name%22%3A%22clientdb%22%2C%22value%22%3A%22%22%2C%22inputType%22%3A%22ClientDB%22%7D%7D%5D"
+                headers = {
+                    'Content-Type': 'application/x-www-form-urlencoded'
+                }
+
+                response = requests.request("POST", url, headers=headers, data=payload, auth=(usern, pword))
+                print('Status Code:')
+                print(response.status_code)
+            if response.status_code == 504:
+                url = "https://portal.site-controls.net/report-service/rest/v1/clients/" + clientID + "/runreport/78?outputformat=csv&emailresult=" + usern
+
+                payload = "inputs=%5B%7B%22type%22%3A%22ReportInputField%22%2C%22label%22%3A%22Clientdb%22%2C%22rank%22%3A1%2C%22inputField%22%3A%7B%22type%22%3A%22InputField%22%2C%22name%22%3A%22clientdb%22%2C%22value%22%3A%22%22%2C%22inputType%22%3A%22ClientDB%22%7D%7D%5D"
+                headers = {
+                    'Content-Type': 'application/x-www-form-urlencoded'
+                }
+                response = requests.request("POST", url, headers=headers, data=payload, auth=(usern, pword))
+                print(clientname + ' Setpoints will be emailed to ' + usern)
+
+            if response.status_code == 200:
+                file = response.text
+                df = pd.read_csv(StringIO(file), sep=',')
+                df.to_excel('SP' + clientname + '.xlsx', index=False, header=True, sheet_name='SP' + clientname)
+                cont = cont + 1
+            else:
+                print('An error occured when pulling the Setpoints report for ' + clientname + '. This report will need to be processed manually.')
+                cont = cont + 1
+        except:
+            print('An error occured when pulling the Setpoints report for ' + clientname + '. This report will need to be processed manually.')
+            cont = cont + 1
+
+# Security Integration
     print()
-    print('Security Integration')
-    print('Status Code:')
-    print(response.status_code)
-    if response.status_code == 504:
-        url = "https://portal.site-controls.net/report-service/rest/v1/clients/" + clientID + "/runreport/266" \
-                                                                                              "?outputformat=csv" \
-                                                                                              "&emailresult=" + \
-              usern
+    print('Security Integration ' + clientname)
+    time.sleep(5)
+    cont = 0
+    while cont == 0:
+        try:
+            url = "https://portal.site-controls.net/report-service/rest/v1/clients/" + clientID + "/runreport/266?outputformat=csv"
 
-        payload = "inputs=%5B%7B%22type%22%3A%22ReportInputField%22%2C%22label%22%3A%22Clientdb%22%2C%22rank%22" \
-                  "%3A1%2C%22inputField%22%3A%7B%22type%22%3A%22InputField%22%2C%22name%22%3A%22clientdb%22%2C" \
-                  "%22value%22%3A%22%22%2C%22inputType%22%3A%22ClientDB%22%7D%7D%5D "
-        headers = {
-            'Content-Type': 'application/x-www-form-urlencoded'
-        }
-        response = requests.request("POST", url, headers=headers, data=payload, auth=(usern, pword))
-        print(clientname + ' Security integration will be emailed to: ' + usern)
-    else:
-        file = 'SI' + clientname + '.csv'
-        print('Saving ' + file + '.')
-        with open(file, "w", newline='') as f:
-            writer = csv.writer(f)
-            for line in response.iter_lines():
-                writer.writerow(line.decode('utf-8').split(','))
-        time.sleep(5)
-        df = pd.read_csv(file)
-        df.to_excel('SI' + clientname + '.xlsx', index=False, header=True)
-        os.remove(file)
-    cont = cont + 1
+            payload = "inputs=%5B%7B%22type%22%3A%22ReportInputField%22%2C%22label%22%3A%22Clientdb%22%2C%22rank%22%3A1%2C%22inputField%22%3A%7B%22type%22%3A%22InputField%22%2C%22name%22%3A%22clientdb%22%2C%22value%22%3A%22%22%2C%22inputType%22%3A%22ClientDB%22%7D%7D%5D"
+            headers = {
+                'Content-Type': 'application/x-www-form-urlencoded'
+            }
+            response = requests.request("POST", url, headers=headers, data=payload, auth=(usern, pword))
+            print('Status Code:')
+            print(response.status_code)
+            if response.status_code == 400:
+                print('Attempting to repull the report')
+                time.sleep(5)
+                url = "https://portal.site-controls.net/report-service/rest/v1/clients/" + clientID + "/runreport/266?outputformat=csv"
 
+                payload = "inputs=%5B%7B%22type%22%3A%22ReportInputField%22%2C%22label%22%3A%22Clientdb%22%2C%22rank%22%3A1%2C%22inputField%22%3A%7B%22type%22%3A%22InputField%22%2C%22name%22%3A%22clientdb%22%2C%22value%22%3A%22%22%2C%22inputType%22%3A%22ClientDB%22%7D%7D%5D"
+                headers = {
+                    'Content-Type': 'application/x-www-form-urlencoded'
+                }
+                response = requests.request("POST", url, headers=headers, data=payload, auth=(usern, pword))
+                print('Status Code:')
+                print(response.status_code)
+            if response.status_code == 504:
+                url = "https://portal.site-controls.net/report-service/rest/v1/clients/" + clientID + "/runreport/266?outputformat=csv&emailresult=" + usern
+
+                payload = "inputs=%5B%7B%22type%22%3A%22ReportInputField%22%2C%22label%22%3A%22Clientdb%22%2C%22rank%22%3A1%2C%22inputField%22%3A%7B%22type%22%3A%22InputField%22%2C%22name%22%3A%22clientdb%22%2C%22value%22%3A%22%22%2C%22inputType%22%3A%22ClientDB%22%7D%7D%5D"
+                headers = {
+                    'Content-Type': 'application/x-www-form-urlencoded'
+                }
+                response = requests.request("POST", url, headers=headers, data=payload, auth=(usern, pword))
+                print(clientname + ' Security integration will be emailed to: ' + usern)
+
+            if response.status_code == 200:
+                file = response.text
+                df = pd.read_csv(StringIO(file), sep=',')
+                df.to_excel('SI' + clientname + '.xlsx', index=False, header=True, sheet_name='SI' + clientname)
+                cont = cont + 1
+            else:
+                print('An error occurred when attempting to pull the Security Integration Report for ' + clientname +'. This report will need to be processed manually.')
+                cont = cont + 1
+        except:
+            print('An error occurred when attempting to pull the Security Integration Report for ' + clientname +'. This report will need to be processed manually.')
+            cont = cont + 1
+
+
+print()
+print('Completed')
 now = datetime.now()
 stop_time = now.strftime("%H:%M:%S")
+print("Start Time =", start_time)
 print("Current Time = ", stop_time)
-total_time = (int(stop_time) - int(start_time))
-print("Total runtime is: ", total_time)
