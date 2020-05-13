@@ -573,7 +573,7 @@ for clientID in clientIDarr:
 print()
 print('Report pulls completed')
 comb = input("When all emailed reports are saved to the folder press enter to continue")
-
+print()
 print('Combining CSV sheets into one XLSX file.')
 writer = ExcelWriter("combined_csv.xlsx")
 
@@ -586,8 +586,8 @@ for filename in glob.glob("*.csv"):
     df_excel.to_excel(writer, sheet_name, index=False)
 
 writer.save()
-
-print('Combing all XLSX sheets into one file.')
+print()
+print('Combining all XLSX sheets into one file.')
 writer = ExcelWriter("combined_all_unsorted.xlsx")
 
 for filename in glob.glob("*.xlsx"):
@@ -599,13 +599,14 @@ for filename in glob.glob("*.xlsx"):
         df_excel.to_excel(writer, sheet_name, index=False)
 
 writer.save()
-
+print()
 print('Sorting workbook tabs alphabetically.')
 wb = load_workbook('combined_all_unsorted.xlsx')
 
 wb._sheets.sort(key=lambda ws: ws.title)
 
 wb.save('KPI Master.xlsx')
+print()
 print('KPI Master.xlsx saved.')
 
 now = datetime.now()
