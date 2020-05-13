@@ -4,6 +4,10 @@ from datetime import datetime
 import time
 import pandas as pd
 from io import StringIO
+from pandas import ExcelWriter
+import glob
+import os
+from openpyxl import load_workbook
 
 now = datetime.now()
 start_time = now.strftime("%H:%M:%S")
@@ -567,7 +571,43 @@ for clientID in clientIDarr:
 
 
 print()
-print('Completed')
+print('Report pulls completed')
+comb = input("When all emailed reports are saved to the folder press enter to continue")
+
+print('Combining CSV sheets into one XLSX file.')
+writer = ExcelWriter("combined_csv.xlsx")
+
+for filename in glob.glob("*.csv"):
+    csv_file = pd.read_csv(filename)
+    (_, f_name) = os.path.split(filename)
+    (f_short_name, _) = os.path.splitext(f_name)
+    sheet_name = f_short_name
+    df_excel = pd.read_csv(filename)
+    df_excel.to_excel(writer, sheet_name, index=False)
+
+writer.save()
+
+print('Combing all XLSX sheets into one file.')
+writer = ExcelWriter("combined_all_unsorted.xlsx")
+
+for filename in glob.glob("*.xlsx"):
+    excel_file = pd.ExcelFile(filename)
+    (_, f_name) = os.path.split(filename)
+    (f_short_name, _) = os.path.splitext(f_name)
+    for sheet_name in excel_file.sheet_names:
+        df_excel = pd.read_excel(filename, sheet_name=sheet_name)
+        df_excel.to_excel(writer, sheet_name, index=False)
+
+writer.save()
+
+print('Sorting workbook tabs alphabetically.')
+wb = load_workbook('combined_all_unsorted.xlsx')
+
+wb._sheets.sort(key=lambda ws: ws.title)
+
+wb.save('KPI Master.xlsx')
+print('KPI Master.xlsx saved.')
+
 now = datetime.now()
 stop_time = now.strftime("%H:%M:%S")
 print("Start Time =", start_time)
