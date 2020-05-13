@@ -108,9 +108,8 @@ while cont == 0:
         }
         print('Active Site Count will be emailed to: ' + usern)
     if response.status_code == 400:
-        print('Attemping to repull the report.')
-        time.sleep(5)
-        url = "https://portal.site-controls.net/report-service/rest/v1/clients/56/runreport/6?outputformat=csv"
+        url = "https://portal.site-controls.net/report-service/rest/v1/clients/56/runreport/6?outputformat=csv&" \
+              "emailresult=" + usern
 
         payload = "inputs=%5B%7B%22type%22%3A%22ReportInputField%22%2C%22label%22%3A%22Date%22%2C%22rank%22%3A1%2C" \
                   "%22inputField%22%3A%7B%22type%22%3A%22InputField%22%2C%22name%22%3A%22day%22%2C%22value%22%3A%22" + \
@@ -118,10 +117,7 @@ while cont == 0:
         headers = {
             'Content-Type': 'application/x-www-form-urlencoded'
         }
-
-        response = requests.request("POST", url, headers=headers, data=payload, auth=(usern, pword))
-        print('Status Code:')
-        print(response.status_code)
+        print('Active Site Count will be emailed to: ' + usern)
     if response.status_code == 200:
         file = response.text
         df = pd.read_csv(StringIO(file), sep=',')
@@ -199,33 +195,30 @@ for clientID in clientIDarr:
         print('Status Code:')
         print(response.status_code)
         if response.status_code == 400:
-            print('Attempting to repull the report.')
-            time.sleep(5)
             url = "https://portal.site-controls.net/report-service/rest/v1/clients/" + clientID + \
-                  "/runreport/98?outputformat=csv"
+                  "/runreport/98?outputformat=csv&emailresult=" + usern
 
-            payload = "inputs=%5B%7B%22type%22%3A%22ReportInputField%22%2C%22label%22%3A%22Clientdb%22%2C%22rank%22%3A1" \
-                      "%2C%22inputField%22%3A%7B%22type%22%3A%22InputField%22%2C%22name%22%3A%22clientdb%22%2C%22value%22" \
-                      "%3A%22%22%2C%22inputType%22%3A%22ClientDB%22%7D%7D%2C%7B%22type%22%3A%22ReportInputField%22%2C" \
-                      "%22label%22%3A%22Month+Begin%22%2C%22rank%22%3A2%2C%22inputField%22%3A%7B%22type%22%3A" \
-                      "%22InputField%22%2C%22name%22%3A%22month_begin%22%2C%22value%22%3A%22" + str(startmth) + \
-                      "%22%2C%22inputType%22%3A%22PickOne%22%7D%7D%2C%7B%22type%22%3A%22ReportInputField%22%2C%22label%22" \
-                      "%3A%22Year+Begin%22%2C%22rank%22%3A3%2C%22inputField%22%3A%7B%22type%22%3A%22InputField%22%2C" \
-                      "%22name%22%3A%22year_begin%22%2C%22value%22%3A%22" + str(startyr) + \
-                      "%22%2C%22inputType%22%3A%22PickOne%22%7D%7D%2C%7B%22type%22%3A%22ReportInputField%22%2C%22label%22" \
-                      "%3A%22Month+End%22%2C%22rank%22%3A4%2C%22inputField%22%3A%7B%22type%22%3A%22InputField%22%2C" \
-                      "%22name%22%3A%22month_end%22%2C%22value%22%3A%22" + str(stopmth) + \
-                      "%22%2C%22inputType%22%3A%22PickOne%22%7D%7D%2C%7B%22type%22%3A%22ReportInputField%22%2C%22label%22" \
-                      "%3A%22Year+End%22%2C%22rank%22%3A5%2C%22inputField%22%3A%7B%22type%22%3A%22InputField%22%2C%22name" \
-                      "%22%3A%22year_end%22%2C%22value%22%3A%22" + str(stopyr) + \
+            payload = "inputs=%5B%7B%22type%22%3A%22ReportInputField%22%2C%22label%22%3A%22Clientdb%22%2C%22rank%22" \
+                      "%3A1%2C%22inputField%22%3A%7B%22type%22%3A%22InputField%22%2C%22name%22%3A%22clientdb%22%2C" \
+                      "%22value%22%3A%22%22%2C%22inputType%22%3A%22ClientDB%22%7D%7D%2C%7B%22type%22%3A" \
+                      "%22ReportInputField%22%2C%22label%22%3A%22Month+Begin%22%2C%22rank%22%3A2%2C%22inputField%22" \
+                      "%3A%7B%22type%22%3A%22InputField%22%2C%22name%22%3A%22month_begin%22%2C%22value%22%3A%22" + \
+                      str(startmth) + "%22%2C%22inputType%22%3A%22PickOne%22%7D%7D%2C%7B%22type%22%3A" \
+                                      "%22ReportInputField%22%2C%22label%22%3A%22Year+Begin%22%2C%22rank%22%3A3%2C" \
+                                      "%22inputField%22%3A%7B%22type%22%3A%22InputField%22%2C%22name%22%3A" \
+                                      "%22year_begin%22%2C%22value%22%3A%22" + str(startyr) + \
+                      "%22%2C%22inputType%22%3A%22PickOne%22%7D%7D%2C%7B%22type%22%3A%22ReportInputField%22%2C" \
+                      "%22label%22%3A%22Month+End%22%2C%22rank%22%3A4%2C%22inputField%22%3A%7B%22type%22%3A" \
+                      "%22InputField%22%2C%22name%22%3A%22month_end%22%2C%22value%22%3A%22" + str(stopmth) + \
+                      "%22%2C%22inputType%22%3A%22PickOne%22%7D%7D%2C%7B%22type%22%3A%22ReportInputField%22%2C" \
+                      "%22label%22%3A%22Year+End%22%2C%22rank%22%3A5%2C%22inputField%22%3A%7B%22type%22%3A" \
+                      "%22InputField%22%2C%22name%22%3A%22year_end%22%2C%22value%22%3A%22" + str(stopyr) + \
                       "%22%2C%22inputType%22%3A%22PickOne%22%7D%7D%5D "
             headers = {
                 'Content-Type': 'application/x-www-form-urlencoded'
             }
-
             response = requests.request("POST", url, headers=headers, data=payload, auth=(usern, pword))
-            print('Status Code:')
-            print(response.status_code)
+            print(clientname + 'Monthly KPI for Enterprise will be emailed to: ' + usern)
         if response.status_code == 504:
             url = "https://portal.site-controls.net/report-service/rest/v1/clients/" + clientID + \
                   "/runreport/98?outputformat=csv&emailresult=" + usern
@@ -291,30 +284,27 @@ for clientID in clientIDarr:
             print('Status Code:')
             print(response.status_code)
             if response.status_code == 400:
-                print('Attempting to repull the report.')
-                time.sleep(5)
-                url = "https://portal.site-controls.net/report-service/rest/v1/clients/" + clientID + \
-                      "/runreport/187?outputformat=csv"
+                url = "https://portal.site-controls.net/report-service/rest/v1/clients/" + clientID + "/runreport/187" \
+                                                                                                      "?outputformat=csv" \
+                                                                                                      "&emailresult=" + \
+                      usern
 
-                payload = "inputs=%5B%7B%22type%22%3A%22ReportInputField%22%2C%22label%22%3A%22Clientdb%22%2C%22rank%22%3A1" \
-                          "%2C%22inputField%22%3A%7B%22type%22%3A%22InputField%22%2C%22name%22%3A%22clientdb%22%2C%22value%22" \
-                          "%3A%22%22%2C%22inputType%22%3A%22ClientDB%22%7D%7D%2C%7B%22type%22%3A%22ReportInputField%22%2C" \
-                          "%22label%22%3A%22After%22%2C%22rank%22%3A2%2C%22inputField%22%3A%7B%22type%22%3A%22InputField%22" \
-                          "%2C%22name%22%3A%22after%22%2C%22value%22%3A%22" + str(hhyrstart) + '-' + str(hhmstart) + '-' + \
-                          str(hhdstart) + "%22%2C%22inputType%22%3A%22Date%22%7D%7D%2C%7B%22type%22%3A%22ReportInputField%22" \
-                                          "%2C%22label%22%3A%22Before%22%2C%22rank%22%3A3%2C%22inputField%22%3A%7B%22type%22" \
-                                          "%3A%22InputField%22%2C%22name%22%3A%22before%22%2C%22value%22%3A%22" + \
-                          str(hhyrstop) + '-' + str(hhmstop) + '-' + str(hhdstop) + \
-                          "%22%2C%22inputType%22%3A%22Date%22%7D%7D%5D"
+                payload = "inputs=%5B%7B%22type%22%3A%22ReportInputField%22%2C%22label%22%3A%22Clientdb%22%2C%22rank%22" \
+                          "%3A1%2C%22inputField%22%3A%7B%22type%22%3A%22InputField%22%2C%22name%22%3A%22clientdb%22%2C" \
+                          "%22value%22%3A%22%22%2C%22inputType%22%3A%22ClientDB%22%7D%7D%2C%7B%22type%22%3A" \
+                          "%22ReportInputField%22%2C%22label%22%3A%22After%22%2C%22rank%22%3A2%2C%22inputField%22%3A%7B" \
+                          "%22type%22%3A%22InputField%22%2C%22name%22%3A%22after%22%2C%22value%22%3A%22" + str(hhyrstart) \
+                          + '-' + str(hhmstart) + '-' + str(hhdstart) + \
+                          "%22%2C%22inputType%22%3A%22Date%22%7D%7D%2C%7B%22type%22%3A%22ReportInputField%22%2C%22label" \
+                          "%22%3A%22Before%22%2C%22rank%22%3A3%2C%22inputField%22%3A%7B%22type%22%3A%22InputField%22%2C" \
+                          "%22name%22%3A%22before%22%2C%22value%22%3A%22" + str(hhyrstop) + '-' + str(hhmstop) + '-' + \
+                          str(hhdstop) + "%22%2C%22inputType%22%3A%22Date%22%7D%7D%5D "
 
                 headers = {
                     'Content-Type': 'application/x-www-form-urlencoded'
                 }
-
                 response = requests.request("POST", url, headers=headers, data=payload, auth=(usern, pword))
-                print()
-                print('Status Code:')
-                print(response.status_code)
+                print(clientname + 'HVAC Health current year will be emailed to: ' + usern)
             if response.status_code == 504:
                 url = "https://portal.site-controls.net/report-service/rest/v1/clients/" + clientID + "/runreport/187" \
                                                                                                       "?outputformat=csv" \
@@ -380,30 +370,25 @@ for clientID in clientIDarr:
             print('Status Code:')
             print(response.status_code)
             if response.status_code == 400:
-                print('Attempting to repull the report')
-                time.sleep(5)
-                url = "https://portal.site-controls.net/report-service/rest/v1/clients/" + clientID + "/runreport/187" \
-                                                                                                      "?outputformat=csv "
+                url = "https://portal.site-controls.net/report-service/rest/v1/clients/" + clientID + \
+                      "/runreport/187?outputformat=csv&emailresult=" + usern
 
-                payload = "inputs=%5B%7B%22type%22%3A%22ReportInputField%22%2C%22label%22%3A%22Clientdb%22%2C%22rank%22%3A1" \
-                          "%2C%22inputField%22%3A%7B%22type%22%3A%22InputField%22%2C%22name%22%3A%22clientdb%22%2C%22value%22" \
-                          "%3A%22%22%2C%22inputType%22%3A%22ClientDB%22%7D%7D%2C%7B%22type%22%3A%22ReportInputField%22%2C" \
-                          "%22label%22%3A%22After%22%2C%22rank%22%3A2%2C%22inputField%22%3A%7B%22type%22%3A%22InputField%22" \
-                          "%2C%22name%22%3A%22after%22%2C%22value%22%3A%22" + str(hhyrstart2) + '-' + str(hhmstart) + '-' + \
-                          str(hhdstart) + "%22%2C%22inputType%22%3A%22Date%22%7D%7D%2C%7B%22type%22%3A%22ReportInputField%22" \
-                                          "%2C%22label%22%3A%22Before%22%2C%22rank%22%3A3%2C%22inputField%22%3A%7B%22type%22" \
-                                          "%3A%22InputField%22%2C%22name%22%3A%22before%22%2C%22value%22%3A%22" + \
-                          str(hhyrstop2) + '-' + str(hhmstop) + '-' + str(hhdstop) + "%22%2C%22inputType%22%3A%22Date%22%7D" \
-                                                                                     "%7D%5D "
+                payload = "inputs=%5B%7B%22type%22%3A%22ReportInputField%22%2C%22label%22%3A%22Clientdb%22%2C%22rank%22" \
+                          "%3A1%2C%22inputField%22%3A%7B%22type%22%3A%22InputField%22%2C%22name%22%3A%22clientdb%22%2C" \
+                          "%22value%22%3A%22%22%2C%22inputType%22%3A%22ClientDB%22%7D%7D%2C%7B%22type%22%3A" \
+                          "%22ReportInputField%22%2C%22label%22%3A%22After%22%2C%22rank%22%3A2%2C%22inputField%22%3A%7B" \
+                          "%22type%22%3A%22InputField%22%2C%22name%22%3A%22after%22%2C%22value%22%3A%22" + \
+                          str(hhyrstart2) + '-' + str(hhmstart) + '-' + str(hhdstart) + \
+                          "%22%2C%22inputType%22%3A%22Date%22%7D%7D%2C%7B%22type%22%3A%22ReportInputField%22%2C%22label" \
+                          "%22%3A%22Before%22%2C%22rank%22%3A3%2C%22inputField%22%3A%7B%22type%22%3A%22InputField%22%2C" \
+                          "%22name%22%3A%22before%22%2C%22value%22%3A%22" + str(hhyrstop2) + '-' + str(hhmstop) + '-' + \
+                          str(hhdstop) + "%22%2C%22inputType%22%3A%22Date%22%7D%7D%5D "
 
                 headers = {
                     'Content-Type': 'application/x-www-form-urlencoded'
                 }
-
                 response = requests.request("POST", url, headers=headers, data=payload, auth=(usern, pword))
-                print('HVAC Health Previous Year')
-                print('Status Code:')
-                print(response.status_code)
+                print('HVAC Health previous year will be emailed to: ' + usern)
             if response.status_code == 504:
                 url = "https://portal.site-controls.net/report-service/rest/v1/clients/" + clientID + \
                   "/runreport/187?outputformat=csv&emailresult=" + usern
@@ -454,17 +439,15 @@ for clientID in clientIDarr:
             print('Status Code:')
             print(response.status_code)
             if response.status_code == 400:
-                print('Attempting to repull the report')
-                time.sleep(5)
-                url = "https://portal.site-controls.net/report-service/rest/v1/clients/" + clientID + "/runreport/110?outputformat=csv"
+                url = "https://portal.site-controls.net/report-service/rest/v1/clients/" + clientID + "/runreport/110?outputformat=csv&emailresult=" + usern
+
                 payload = "inputs=%5B%7B%22type%22%3A%22ReportInputField%22%2C%22label%22%3A%22Clientdb%22%2C%22rank%22%3A1%2C%22inputField%22%3A%7B%22type%22%3A%22InputField%22%2C%22name%22%3A%22clientdb%22%2C%22value%22%3A%22%22%2C%22inputType%22%3A%22ClientDB%22%7D%7D%2C%7B%22type%22%3A%22ReportInputField%22%2C%22label%22%3A%22After%22%2C%22rank%22%3A2%2C%22inputField%22%3A%7B%22type%22%3A%22InputField%22%2C%22name%22%3A%22after%22%2C%22value%22%3A%22" + str(stopyr) + '-' + str(stopmth) + '-' + hhdstart + "%22%2C%22inputType%22%3A%22Date%22%7D%7D%2C%7B%22type%22%3A%22ReportInputField%22%2C%22label%22%3A%22Numofdays%22%2C%22rank%22%3A3%2C%22inputField%22%3A%7B%22type%22%3A%22InputField%22%2C%22name%22%3A%22numofdays%22%2C%22value%22%3A%22" + str(dsdur) + "%22%2C%22inputType%22%3A%22Integer%22%7D%7D%5D"
 
                 headers = {
                     'Content-Type': 'application/x-www-form-urlencoded'
                 }
                 response = requests.request("POST", url, headers=headers, data=payload, auth=(usern, pword))
-                print('Status Code:')
-                print(response.status_code)
+                print(clientname + 'Demand Stats will be emailed to: ' + usern)
             if response.status_code == 504:
                 url = "https://portal.site-controls.net/report-service/rest/v1/clients/" + clientID + "/runreport/110?outputformat=csv&emailresult=" + usern
 
@@ -505,18 +488,14 @@ for clientID in clientIDarr:
             print('Status Code:')
             print(response.status_code)
             if response.status_code == 400:
-                print('Attempting to repull the report')
-                time.sleep(5)
-                url = "https://portal.site-controls.net/report-service/rest/v1/clients/" + clientID + "/runreport/78?outputformat=csv"
+                url = "https://portal.site-controls.net/report-service/rest/v1/clients/" + clientID + "/runreport/78?outputformat=csv&emailresult=" + usern
 
                 payload = "inputs=%5B%7B%22type%22%3A%22ReportInputField%22%2C%22label%22%3A%22Clientdb%22%2C%22rank%22%3A1%2C%22inputField%22%3A%7B%22type%22%3A%22InputField%22%2C%22name%22%3A%22clientdb%22%2C%22value%22%3A%22%22%2C%22inputType%22%3A%22ClientDB%22%7D%7D%5D"
                 headers = {
                     'Content-Type': 'application/x-www-form-urlencoded'
                 }
-
                 response = requests.request("POST", url, headers=headers, data=payload, auth=(usern, pword))
-                print('Status Code:')
-                print(response.status_code)
+                print(clientname + ' Setpoints will be emailed to ' + usern)
             if response.status_code == 504:
                 url = "https://portal.site-controls.net/report-service/rest/v1/clients/" + clientID + "/runreport/78?outputformat=csv&emailresult=" + usern
 
@@ -556,17 +535,14 @@ for clientID in clientIDarr:
             print('Status Code:')
             print(response.status_code)
             if response.status_code == 400:
-                print('Attempting to repull the report')
-                time.sleep(5)
-                url = "https://portal.site-controls.net/report-service/rest/v1/clients/" + clientID + "/runreport/266?outputformat=csv"
+                url = "https://portal.site-controls.net/report-service/rest/v1/clients/" + clientID + "/runreport/266?outputformat=csv&emailresult=" + usern
 
                 payload = "inputs=%5B%7B%22type%22%3A%22ReportInputField%22%2C%22label%22%3A%22Clientdb%22%2C%22rank%22%3A1%2C%22inputField%22%3A%7B%22type%22%3A%22InputField%22%2C%22name%22%3A%22clientdb%22%2C%22value%22%3A%22%22%2C%22inputType%22%3A%22ClientDB%22%7D%7D%5D"
                 headers = {
                     'Content-Type': 'application/x-www-form-urlencoded'
                 }
                 response = requests.request("POST", url, headers=headers, data=payload, auth=(usern, pword))
-                print('Status Code:')
-                print(response.status_code)
+                print(clientname + ' Security integration will be emailed to: ' + usern)
             if response.status_code == 504:
                 url = "https://portal.site-controls.net/report-service/rest/v1/clients/" + clientID + "/runreport/266?outputformat=csv&emailresult=" + usern
 
