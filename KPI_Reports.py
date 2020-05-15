@@ -334,7 +334,7 @@ for clientID in clientIDarr:
             if response.status_code == 200:
                 file = response.text
                 df = pd.read_csv(StringIO(file), sep=',')
-                df.to_excel('HH' + clientname + '20.xlsx', index=False, header=True, sheet_name='HH' + clientname + '20')
+                df.to_excel('HH' + clientname + str(hhyrstart)+ '.xlsx', index=False, header=True, sheet_name='HH' + clientname + str(hhyrstart))
                 cont = cont + 1
             else:
                 print('An error occured when pulling the HVAC Health - previous year report for ' + clientname + '. This report will need to be processed manually.')
@@ -416,7 +416,7 @@ for clientID in clientIDarr:
             if response.status_code == 200:
                 file = response.text
                 df = pd.read_csv(StringIO(file), sep=',')
-                df.to_excel('HH' + clientname + '19.xlsx', index=False, header=True, sheet_name='HH' + clientname + '19')
+                df.to_excel('HH' + clientname + str(hhyrstart) + '.xlsx', index=False, header=True, sheet_name='HH' + clientname + str(hhyrstart))
                 cont = cont + 1
             else:
                 print('An error occured when pulling the HVAC Health - previous year report for ' + clientname + '. This report will need to be processed manually.')
@@ -569,6 +569,102 @@ for clientID in clientIDarr:
             print('An error occurred when attempting to pull the Security Integration Report for ' + clientname +'. This report will need to be processed manually.')
             cont = cont + 1
 
+# Event List - Current year
+    print()
+    print('Event List - Current year ' + clientname)
+    time.sleep(5)
+    cont = 0
+    while cont == 0:
+        try:
+            url = "https://portal.site-controls.net/report-service/rest/v1/clients/" + clientID + "/runreport/49?outputformat=csv"
+
+            payload = "inputs=%5B%7B%22type%22%3A%22ReportInputField%22%2C%22label%22%3A%22Clientdb%22%2C%22rank%22%3A1%2C%22inputField%22%3A%7B%22type%22%3A%22InputField%22%2C%22name%22%3A%22clientdb%22%2C%22value%22%3A%22%22%2C%22inputType%22%3A%22ClientDB%22%7D%7D%2C%7B%22type%22%3A%22ReportInputField%22%2C%22label%22%3A%22After%22%2C%22rank%22%3A2%2C%22inputField%22%3A%7B%22type%22%3A%22InputField%22%2C%22name%22%3A%22after%22%2C%22value%22%3A%22" + str(hhyrstart) + '-' + str(hhmstart) + '-' + str(hhdstart) + "%22%2C%22inputType%22%3A%22Date%22%7D%7D%2C%7B%22type%22%3A%22ReportInputField%22%2C%22label%22%3A%22Numofdays%22%2C%22rank%22%3A3%2C%22inputField%22%3A%7B%22type%22%3A%22InputField%22%2C%22name%22%3A%22numofdays%22%2C%22value%22%3A%22" + str(dsdur) + "%22%2C%22inputType%22%3A%22Integer%22%7D%7D%2C%7B%22type%22%3A%22ReportInputField%22%2C%22label%22%3A%22Exception+Category%22%2C%22rank%22%3A4%2C%22inputField%22%3A%7B%22type%22%3A%22InputField%22%2C%22name%22%3A%22eventcat%22%2C%22value%22%3A%22All%22%2C%22inputType%22%3A%22PickOne%22%7D%7D%5D"
+            headers = {
+                'Content-Type': 'application/x-www-form-urlencoded'
+            }
+
+            response = requests.request("POST", url, headers=headers, data=payload, auth=(usern, pword))
+            print('Status Code:')
+            print(response.status_code)
+
+            if response.status_code == 400:
+                url = "https://portal.site-controls.net/report-service/rest/v1/clients/" + clientID + "/runreport/49?outputformat=csv&emailresult=" + usern
+
+                payload = "inputs=%5B%7B%22type%22%3A%22ReportInputField%22%2C%22label%22%3A%22Clientdb%22%2C%22rank%22%3A1%2C%22inputField%22%3A%7B%22type%22%3A%22InputField%22%2C%22name%22%3A%22clientdb%22%2C%22value%22%3A%22%22%2C%22inputType%22%3A%22ClientDB%22%7D%7D%2C%7B%22type%22%3A%22ReportInputField%22%2C%22label%22%3A%22After%22%2C%22rank%22%3A2%2C%22inputField%22%3A%7B%22type%22%3A%22InputField%22%2C%22name%22%3A%22after%22%2C%22value%22%3A%22" + str(hhyrstart) + '-' + str(hhmstart) + '-' + str(hhdstart) + "%22%2C%22inputType%22%3A%22Date%22%7D%7D%2C%7B%22type%22%3A%22ReportInputField%22%2C%22label%22%3A%22Numofdays%22%2C%22rank%22%3A3%2C%22inputField%22%3A%7B%22type%22%3A%22InputField%22%2C%22name%22%3A%22numofdays%22%2C%22value%22%3A%22" + str(dsdur) + "%22%2C%22inputType%22%3A%22Integer%22%7D%7D%2C%7B%22type%22%3A%22ReportInputField%22%2C%22label%22%3A%22Exception+Category%22%2C%22rank%22%3A4%2C%22inputField%22%3A%7B%22type%22%3A%22InputField%22%2C%22name%22%3A%22eventcat%22%2C%22value%22%3A%22All%22%2C%22inputType%22%3A%22PickOne%22%7D%7D%5D"
+                headers = {
+                    'Content-Type': 'application/x-www-form-urlencoded'
+                }
+                response = requests.request("POST", url, headers=headers, data=payload, auth=(usern, pword))
+                print(clientname + ' Event List - Current Year will be emailed to: ' + usern)
+            if response.status_code == 504:
+                url = "https://portal.site-controls.net/report-service/rest/v1/clients/" + clientID + "/runreport/49?outputformat=csv&emailresult=" + usern
+
+                payload = "inputs=%5B%7B%22type%22%3A%22ReportInputField%22%2C%22label%22%3A%22Clientdb%22%2C%22rank%22%3A1%2C%22inputField%22%3A%7B%22type%22%3A%22InputField%22%2C%22name%22%3A%22clientdb%22%2C%22value%22%3A%22%22%2C%22inputType%22%3A%22ClientDB%22%7D%7D%2C%7B%22type%22%3A%22ReportInputField%22%2C%22label%22%3A%22After%22%2C%22rank%22%3A2%2C%22inputField%22%3A%7B%22type%22%3A%22InputField%22%2C%22name%22%3A%22after%22%2C%22value%22%3A%22" + str(hhyrstart) + '-' + str(hhmstart) + '-' + str(hhdstart) + "%22%2C%22inputType%22%3A%22Date%22%7D%7D%2C%7B%22type%22%3A%22ReportInputField%22%2C%22label%22%3A%22Numofdays%22%2C%22rank%22%3A3%2C%22inputField%22%3A%7B%22type%22%3A%22InputField%22%2C%22name%22%3A%22numofdays%22%2C%22value%22%3A%22" + str(dsdur) + "%22%2C%22inputType%22%3A%22Integer%22%7D%7D%2C%7B%22type%22%3A%22ReportInputField%22%2C%22label%22%3A%22Exception+Category%22%2C%22rank%22%3A4%2C%22inputField%22%3A%7B%22type%22%3A%22InputField%22%2C%22name%22%3A%22eventcat%22%2C%22value%22%3A%22All%22%2C%22inputType%22%3A%22PickOne%22%7D%7D%5D"
+                headers = {
+                    'Content-Type': 'application/x-www-form-urlencoded'
+                }
+                response = requests.request("POST", url, headers=headers, data=payload, auth=(usern, pword))
+                print(clientname + ' Event List - Current Year will be emailed to: ' + usern)
+            if response.status_code == 200:
+                file = response.text
+                df = pd.read_csv(StringIO(file), sep=',')
+                df.to_excel('EL' + clientname + str(hhyrstart) + '.xlsx', index=False, header=True, sheet_name='EL' + clientname + str(hhyrstart))
+                print('Event List - Current Year saved.')
+                cont = cont + 1
+            else:
+                print('An error occurred when attempting to pull the Event List - Current Year Report for ' + clientname +'. This report will need to be processed manually.')
+                cont = cont + 1
+        except:
+            print('An error occurred when attempting to pull the Event List - Current Year Report for ' + clientname +'. This report will need to be processed manually.')
+            cont = cont + 1
+
+    # Event List - previous year
+    print()
+    print('Event List - Previous Year ' + clientname)
+    time.sleep(5)
+    cont = 0
+    while cont == 0:
+        try:
+            url = "https://portal.site-controls.net/report-service/rest/v1/clients/" + clientID + "/runreport/49?outputformat=csv"
+
+            payload = "inputs=%5B%7B%22type%22%3A%22ReportInputField%22%2C%22label%22%3A%22Clientdb%22%2C%22rank%22%3A1%2C%22inputField%22%3A%7B%22type%22%3A%22InputField%22%2C%22name%22%3A%22clientdb%22%2C%22value%22%3A%22%22%2C%22inputType%22%3A%22ClientDB%22%7D%7D%2C%7B%22type%22%3A%22ReportInputField%22%2C%22label%22%3A%22After%22%2C%22rank%22%3A2%2C%22inputField%22%3A%7B%22type%22%3A%22InputField%22%2C%22name%22%3A%22after%22%2C%22value%22%3A%22" + str(hhyrstart2) + '-' + str(hhmstart) + '-' + str(hhdstart) + "%22%2C%22inputType%22%3A%22Date%22%7D%7D%2C%7B%22type%22%3A%22ReportInputField%22%2C%22label%22%3A%22Numofdays%22%2C%22rank%22%3A3%2C%22inputField%22%3A%7B%22type%22%3A%22InputField%22%2C%22name%22%3A%22numofdays%22%2C%22value%22%3A%22" + str(dsdur) + "%22%2C%22inputType%22%3A%22Integer%22%7D%7D%2C%7B%22type%22%3A%22ReportInputField%22%2C%22label%22%3A%22Exception+Category%22%2C%22rank%22%3A4%2C%22inputField%22%3A%7B%22type%22%3A%22InputField%22%2C%22name%22%3A%22eventcat%22%2C%22value%22%3A%22All%22%2C%22inputType%22%3A%22PickOne%22%7D%7D%5D"
+            headers = {
+                'Content-Type': 'application/x-www-form-urlencoded'
+            }
+
+            response = requests.request("POST", url, headers=headers, data=payload, auth=(usern, pword))
+            print('Status Code:')
+            print(response.status_code)
+            if response.status_code == 400:
+                url = "https://portal.site-controls.net/report-service/rest/v1/clients/" + clientID + "/runreport/49?outputformat=csv&emailresult=" + usern
+
+                payload = "inputs=%5B%7B%22type%22%3A%22ReportInputField%22%2C%22label%22%3A%22Clientdb%22%2C%22rank%22%3A1%2C%22inputField%22%3A%7B%22type%22%3A%22InputField%22%2C%22name%22%3A%22clientdb%22%2C%22value%22%3A%22%22%2C%22inputType%22%3A%22ClientDB%22%7D%7D%2C%7B%22type%22%3A%22ReportInputField%22%2C%22label%22%3A%22After%22%2C%22rank%22%3A2%2C%22inputField%22%3A%7B%22type%22%3A%22InputField%22%2C%22name%22%3A%22after%22%2C%22value%22%3A%22" + str(hhyrstart2) + '-' + str(hhmstart) + '-' + str(hhdstart) + "%22%2C%22inputType%22%3A%22Date%22%7D%7D%2C%7B%22type%22%3A%22ReportInputField%22%2C%22label%22%3A%22Numofdays%22%2C%22rank%22%3A3%2C%22inputField%22%3A%7B%22type%22%3A%22InputField%22%2C%22name%22%3A%22numofdays%22%2C%22value%22%3A%22" + str(dsdur) + "%22%2C%22inputType%22%3A%22Integer%22%7D%7D%2C%7B%22type%22%3A%22ReportInputField%22%2C%22label%22%3A%22Exception+Category%22%2C%22rank%22%3A4%2C%22inputField%22%3A%7B%22type%22%3A%22InputField%22%2C%22name%22%3A%22eventcat%22%2C%22value%22%3A%22All%22%2C%22inputType%22%3A%22PickOne%22%7D%7D%5D"
+                headers = {
+                    'Content-Type': 'application/x-www-form-urlencoded'
+                }
+                response = requests.request("POST", url, headers=headers, data=payload, auth=(usern, pword))
+                print(clientname + ' Event List - Previous Year will be emailed to: ' + usern)
+            if response.status_code == 504:
+                url = "https://portal.site-controls.net/report-service/rest/v1/clients/" + clientID + "/runreport/49?outputformat=csv&emailresult=" + usern
+
+                payload = "inputs=%5B%7B%22type%22%3A%22ReportInputField%22%2C%22label%22%3A%22Clientdb%22%2C%22rank%22%3A1%2C%22inputField%22%3A%7B%22type%22%3A%22InputField%22%2C%22name%22%3A%22clientdb%22%2C%22value%22%3A%22%22%2C%22inputType%22%3A%22ClientDB%22%7D%7D%2C%7B%22type%22%3A%22ReportInputField%22%2C%22label%22%3A%22After%22%2C%22rank%22%3A2%2C%22inputField%22%3A%7B%22type%22%3A%22InputField%22%2C%22name%22%3A%22after%22%2C%22value%22%3A%22" + str(hhyrstart2) + '-' + str(hhmstart) + '-' + str(hhdstart) + "%22%2C%22inputType%22%3A%22Date%22%7D%7D%2C%7B%22type%22%3A%22ReportInputField%22%2C%22label%22%3A%22Numofdays%22%2C%22rank%22%3A3%2C%22inputField%22%3A%7B%22type%22%3A%22InputField%22%2C%22name%22%3A%22numofdays%22%2C%22value%22%3A%22" + str(dsdur) + "%22%2C%22inputType%22%3A%22Integer%22%7D%7D%2C%7B%22type%22%3A%22ReportInputField%22%2C%22label%22%3A%22Exception+Category%22%2C%22rank%22%3A4%2C%22inputField%22%3A%7B%22type%22%3A%22InputField%22%2C%22name%22%3A%22eventcat%22%2C%22value%22%3A%22All%22%2C%22inputType%22%3A%22PickOne%22%7D%7D%5D"
+                headers = {
+                    'Content-Type': 'application/x-www-form-urlencoded'
+                }
+                response = requests.request("POST", url, headers=headers, data=payload, auth=(usern, pword))
+                print(clientname + ' Event List - Previous Year will be emailed to: ' + usern)
+            if response.status_code == 200:
+                file = response.text
+                df = pd.read_csv(StringIO(file), sep=',')
+                df.to_excel('EL' + clientname + str(hhyrstart2) + '.xlsx', index=False, header=True, sheet_name='EL' + clientname + str(hhyrstart2))
+                print('Event List - Previous Year saved.')
+                cont = cont + 1
+            else:
+                print('An error occurred when attempting to pull the Event List - Previous Year Report for ' + clientname +'. This report will need to be processed manually.')
+                cont = cont + 1
+        except:
+            print('An error occurred when attempting to pull the Event List - Previous Year Report for ' + clientname +'. This report will need to be processed manually.')
+            cont = cont + 1
 
 print()
 print('Report pulls completed')
